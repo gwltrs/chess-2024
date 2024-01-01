@@ -1,0 +1,15 @@
+package:
+  dependencies:
+    - concur-core
+    - concur-react
+    - console
+    - effect
+    - prelude
+  name: chess-2024
+  test:
+    dependencies: []
+    main: Test.Main
+workspace:
+  extra_packages: {}
+  package_set:
+    registry: 46.2.0
