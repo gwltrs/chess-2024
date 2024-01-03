@@ -1,5 +1,6 @@
 package:
   dependencies:
+    - aff-promise
     - concur-core
     - concur-react
     - console
