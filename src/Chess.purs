@@ -5,6 +5,7 @@ module Chess
   , Piece
   , Square
   , emptyMove
+  , fenAfterMove
   , setUpBoardAndWaitForMove
   )
   where
@@ -30,6 +31,8 @@ type ChessboardMove =
   }
 
 foreign import setUpBoardAndWaitForMove_ :: FEN -> Orientation -> Effect (Promise ChessboardMove)
+
+foreign import fenAfterMove :: Square -> Square -> FEN -> FEN
 
 setUpBoardAndWaitForMove :: FEN -> Orientation -> Aff ChessboardMove
 setUpBoardAndWaitForMove f o = toAffE $ setUpBoardAndWaitForMove_ f o

@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Chess (ChessboardMove, Orientation, FEN, emptyMove, setUpBoardAndWaitForMove)
+import Chess (ChessboardMove, FEN, Orientation, emptyMove, fenAfterMove, setUpBoardAndWaitForMove)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
@@ -27,8 +27,8 @@ import Effect.Console (log)
 
 chessboard :: FEN -> Orientation -> Widget HTML ChessboardMove
 chessboard fen orient = do
-  _ <- board <|> setUp
-  chessboard fen orient
+  move <- board <|> setUp
+  chessboard (fenAfterMove move.source move.target fen) orient
   where 
     board = emptyMove <$ (D.div [P._id "board1", style] [])
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
