@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Chess (ChessboardMove, FEN, Orientation, emptyMove, fenAfterMove, setUpBoardAndWaitForMove)
+import Chess (Move, FEN, Orientation, fenAfterMove, setUpBoardAndWaitForMove)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
@@ -25,12 +25,12 @@ import Effect.Console (log)
 --   liftEffect (log ("COUNT IS NOW: " <> show n))
 --   counterWidget n
 
-chessboard :: FEN -> Orientation -> Widget HTML ChessboardMove
+chessboard :: FEN -> Orientation -> Widget HTML Move
 chessboard fen orient = do
-  move <- board <|> setUp
-  chessboard (fenAfterMove move.source move.target fen) orient
+  action <- board <|> setUp
+  chessboard action.fen orient
   where 
-    board = emptyMove <$ (D.div [P._id "board1", style] [])
+    board = { fen: "", move: "" } <$ (D.div [P._id "board1", style] [])
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
     style = P.style 
       { width: "400px"

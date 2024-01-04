@@ -1,10 +1,7 @@
 module Chess
-  ( ChessboardMove
-  , FEN
+  ( FEN
+  , Move
   , Orientation
-  , Piece
-  , Square
-  , emptyMove
   , fenAfterMove
   , setUpBoardAndWaitForMove
   )
@@ -17,25 +14,13 @@ import Effect (Effect)
 import Effect.Aff (Aff)
 
 type FEN = String -- "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k -" (w/0 move #s)
-type Square = String -- "e4", "f7"
-type Piece = String -- "wK", "bN"
+type Move = String -- "e2e4", "f7f8n", "f7f8b", "f7f8r"
 type Orientation = String -- "white", "black"
+type Action = { move :: Move, fen :: FEN }
 
-type ChessboardMove = 
-  { source :: Square
-  , target :: Square
-  , piece :: Piece
-  , newPos :: FEN
-  , oldPos :: FEN
-  , orientation :: Orientation
-  }
+foreign import setUpBoardAndWaitForMove_ :: FEN -> Orientation -> Effect (Promise Action)
 
-foreign import setUpBoardAndWaitForMove_ :: FEN -> Orientation -> Effect (Promise ChessboardMove)
+foreign import fenAfterMove :: Move -> FEN -> FEN
 
-foreign import fenAfterMove :: Square -> Square -> FEN -> FEN
-
-setUpBoardAndWaitForMove :: FEN -> Orientation -> Aff ChessboardMove
+setUpBoardAndWaitForMove :: FEN -> Orientation -> Aff Action
 setUpBoardAndWaitForMove f o = toAffE $ setUpBoardAndWaitForMove_ f o
-
-emptyMove :: ChessboardMove
-emptyMove = { source: "", target: "", piece: "", newPos: "", oldPos: "", orientation: "" }

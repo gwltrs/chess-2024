@@ -6,7 +6,6 @@ function setUpBoardAndWaitForMove_(fen) {
             return delay(1)
                 .then(() => {
                     return new Promise((res, rej) => {
-                        console.log('create', fen);
                         const board = Chessboard('board1', {
                             position: fen,
                             orientation,
@@ -20,16 +19,15 @@ function setUpBoardAndWaitForMove_(fen) {
                             },
                             onDrop: (source, target, piece, newPos, oldPos, orientation_) => {
                                 if (source === target) { return; }
-                                const obj = 
-                                    { source
-                                    , target
-                                    , piece
-                                    , newPos: Chessboard.objToFen(newPos)
-                                    , oldPos: Chessboard.objToFen(oldPos)
-                                    , orientation_ 
-                                    };
-                                console.log(obj);
-                                res(obj);
+                                const game = mkGame(fen);
+                                game.move({ 
+                                    from: source, 
+                                    to: target, 
+                                    promotion: promotionLetter()
+                                });
+                                const newFEN = sanitizeFEN(game.fen());
+                                const move = source + target;
+                                res({ move, fen: newFEN });
                             }
                         });
                     });
@@ -38,24 +36,59 @@ function setUpBoardAndWaitForMove_(fen) {
     }
 }
 
-function fenAfterMove(from) {
-    return function (to) {
-        return function (fen) {
-            const game = mkGame(fen);
-            game.move({ from, to });
-            console.log(from, to, fen, sanitizeFEN(game.fen()));
-            return sanitizeFEN(game.fen()); 
-        }
+function fenAfterMove(move) {
+    return function (fen) {
+        const game = mkGame(fen);
+        game.move({ 
+            from: move.substring(0, 2), 
+            to: move.substring(2, 4), 
+            promotion: move.length === 5 ? move[4] : 'q'
+        });
+        return sanitizeFEN(game.fen()); 
     }
 }
 
 export { setUpBoardAndWaitForMove_, fenAfterMove };
 
+let lastUnderPromotionHotKey = null;
+
+try {
+    document.addEventListener('keydown', e => {
+        const letters = ['b', 'n', 'r'];
+        for (const l of letters) {
+            if ([l, l.toUpperCase()].includes(e.key)) {
+                lastUnderPromotionHotKey = { letter: l, seconds: timestamp() };
+            }
+        }
+    });
+} catch (err) {}
+
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function toChessJSFEN (fen) {
+function timestamp() {
+    return (new Date).getTime() / 1000;
+}
+
+const promotionLetter = () => {
+    if (lastUnderPromotionHotKey === null) {
+        console.log('promotionLetter()', 'q');
+        return 'q';
+    } else {
+        let nowSeconds = timestamp();
+        if ((nowSeconds - lastUnderPromotionHotKey.seconds) <= 3) {
+            lastUnderPromotionHotKey.seconds = 0;
+            console.log('promotionLetter()', lastUnderPromotionHotKey.letter);
+            return lastUnderPromotionHotKey.letter;
+        } else {
+            console.log('promotionLetter()', 'q');
+            return 'q';
+        }
+    }
+}
+
+function chessJSFEN(fen) {
 
     const numberOfSpaces = (str) => {
         var string = str,
@@ -82,7 +115,7 @@ function toChessJSFEN (fen) {
 }
 
 function mkGame(fen) {
-    return new Chess(toChessJSFEN(fen));
+    return new Chess(chessJSFEN(fen));
 }
 
 function sanitizeFEN(fen) {
