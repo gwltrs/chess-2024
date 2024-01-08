@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Chess (fenAfterMove, setUpBoardAndWaitForMove)
+import Chess (destroyBoard, fenAfterMove, setUpBoardAndWaitForMove)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
@@ -17,23 +17,21 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Types (FEN, Move, Move', Orientation, Puzzle)
 import Utils ((!!!))
-import Widgets (chessboard1, chessboard2, mainMenu, textInputs)
+import Widgets (chessboard, mainMenu, textInputs)
 
 root :: Widget HTML Unit
 root = do
   strs <- textInputs ["", ""] "just some strings"
   liftEffect $ log $ show strs
-  _ <- chessboard1 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
   _ <- mainMenu
-  _ <- chessboard1 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard2 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard1 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard2 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard1 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard2 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
+  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
   _ <- mainMenu
-  _ <- chessboard1 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  void $ chessboard1 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
+  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
+  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
+  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
+  _ <- mainMenu
+  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
+  void $ chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
   
 
 main :: Effect Unit

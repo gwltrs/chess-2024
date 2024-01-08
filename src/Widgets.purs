@@ -1,7 +1,6 @@
 module Widgets
   ( MainMenuAction(..)
-  , chessboard1
-  , chessboard2
+  , chessboard
   , mainMenu
   , textInputs
   )
@@ -9,7 +8,7 @@ module Widgets
 
 import Prelude
 
-import Chess (setUpBoardAndWaitForMove)
+import Chess (destroyBoard, setUpBoardAndWaitForMove)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
@@ -34,25 +33,20 @@ data MainMenuAction
 button :: Widget HTML Unit
 button = pure unit
 
-chessboard1 :: FEN -> Orientation -> Widget HTML Move'
-chessboard1 fen orient = board <|> setUp
+chessboard :: FEN -> Orientation -> Widget HTML Move'
+chessboard fen orient = board <|> setUp
   where 
     board = { fen: "", move: "" } <$ (D.div [P._id "board1", style] [])
-    setUp = liftAff $ setUpBoardAndWaitForMove fen orient "board1"
-    style = P.style { width: "400px" }
-
-chessboard2 :: FEN -> Orientation -> Widget HTML Move'
-chessboard2 fen orient = board <|> setUp
-  where 
-    board = { fen: "", move: "" } <$ (D.div [P._id "board2", style] [])
-    setUp = liftAff $ setUpBoardAndWaitForMove fen orient "board2"
+    setUp = liftAff $ setUpBoardAndWaitForMove fen orient
     style = P.style { width: "400px" }
 
 mainMenu :: Widget HTML MainMenuAction
-mainMenu = D.div' 
-  [ textInputs ["name", "fen"] "new puzzle" <#>
-      (\a -> NewPuzzle (a !!! 0) (a !!! 1))
-  ] 
+mainMenu = do
+  liftEffect destroyBoard
+  D.div' 
+    [ textInputs ["name", "fen"] "new puzzle" <#>
+        (\a -> NewPuzzle (a !!! 0) (a !!! 1))
+    ] 
 
 newPuzzle :: String -> FEN -> Widget HTML (Maybe Puzzle)
 newPuzzle name fen = 

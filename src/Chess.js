@@ -1,41 +1,48 @@
 "use strict";
 
+var previousBoard = null;
+
+function destroyBoard() {
+    if (previousBoard !== null) {
+        previousBoard.destroy();
+    }
+    previousBoard = null;
+}
+
 function setUpBoardAndWaitForMove_(fen) {
     return function(orientation) {
-        return function(id) {
-            return function() {
-                return delay(1)
-                    .then(() => {
-                        return new Promise((res, rej) => {
-                            const board = Chessboard(id, {
-                                position: fen,
-                                orientation,
-                                draggable: true,
-                                onDragStart: (source, piece, position, orientation_) => {
-                                    const game = mkGame(fen);
-                                    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-                                        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-                                        return false
-                                    }
-                                },
-                                onDrop: (source, target, piece, newPos, oldPos, orientation_) => {
-                                    if (source === target) { return; }
-                                    const game = mkGame(fen);
-                                    game.move({ 
-                                        from: source, 
-                                        to: target, 
-                                        promotion: promotionLetter()
-                                    });
-                                    const newFEN = sanitizeFEN(game.fen());
-                                    const move = source + target;
-                                    res({ move, fen: newFEN });
-                                    // board.destroy();
-                                    // $('#' + id).hide();
+        return function() {
+            return delay(1)
+                .then(() => {
+                    return new Promise((res, rej) => {
+                        destroyBoard();
+                        const board = Chessboard('board1', {
+                            position: fen,
+                            orientation,
+                            draggable: true,
+                            onDragStart: (source, piece, position, orientation_) => {
+                                const game = mkGame(fen);
+                                if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+                                    (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+                                    return false
                                 }
-                            });
+                            },
+                            onDrop: (source, target, piece, newPos, oldPos, orientation_) => {
+                                if (source === target) { return; }
+                                const game = mkGame(fen);
+                                game.move({ 
+                                    from: source, 
+                                    to: target, 
+                                    promotion: promotionLetter()
+                                });
+                                const newFEN = sanitizeFEN(game.fen());
+                                const move = source + target;
+                                res({ move, fen: newFEN });
+                            }
                         });
+                        previousBoard = board;
                     });
-            }
+                });
         }
     }
 }
@@ -52,7 +59,7 @@ function fenAfterMove(move) {
     }
 }
 
-export { setUpBoardAndWaitForMove_, fenAfterMove };
+export { destroyBoard, setUpBoardAndWaitForMove_, fenAfterMove };
 
 let lastUnderPromotionHotKey = null;
 
