@@ -12,7 +12,7 @@ module Widgets
 
 import Prelude
 
-import Chess (FEN, Move, Move', Orientation, destroyBoard, setUpBoardAndWaitForMove)
+import Chess (Color, FEN, Move, Move', destroyBoard, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
@@ -36,11 +36,16 @@ import Utils ((!!!))
 data MainMenuAction
   = NewPuzzle String FEN
 
+data NewPuzzleAction
+  = CancelPuzzle
+  | AddMove Move'
+  | SavePuzzle
+
 type Puzzle = 
-    { name :: String
-    , fen :: FEN 
-    , line :: Array Move
-    }
+  { name :: String
+  , fen :: FEN 
+  , line :: Array Move
+  }
 
 type State =
   { puzzles :: Array Puzzle
@@ -49,7 +54,7 @@ type State =
 button :: String -> Widget HTML Unit
 button text = void $ D.button [P.onClick, P.className "menuButton"] [D.text text]
 
-chessboard :: FEN -> Orientation -> Widget HTML Move'
+chessboard :: FEN -> Color -> Widget HTML Move'
 chessboard fen orient = board <|> setUp
   where 
     board = { fen: "", move: "" } <$ (D.div [P._id "board1", style] [])
@@ -86,11 +91,22 @@ mainMenuInputs  = do
 
 newPuzzle :: String -> FEN -> Widget HTML (Maybe Puzzle)
 newPuzzle name fen = 
-  D.div'
-    [ Nothing <$ button "Back"
-    , label name
-    , Nothing <$ button "Save"
-    ]
+  let 
+    orientation = turnFromFEN fen
+    inner :: FEN -> Array Move -> Widget HTML (Maybe Puzzle)
+    inner fen' line = do
+      action <- D.div'
+        [ CancelPuzzle <$ button "Back"
+        , label name
+        , SavePuzzle <$ button "Save"
+        , AddMove <$> chessboard fen' orientation
+        ]
+      case action of
+        CancelPuzzle -> pure Nothing
+        AddMove m -> inner m.fen (line <> [m.move])
+        SavePuzzle -> pure $ Just { name: name, fen: fen, line: line }
+  in
+    inner fen []
 
 root :: Widget HTML Unit
 root = do

@@ -9,6 +9,18 @@ function destroyBoard() {
     previousBoard = null;
 }
 
+function fenAfterMove(move) {
+    return function (fen) {
+        const game = mkGame(fen);
+        game.move({ 
+            from: move.substring(0, 2), 
+            to: move.substring(2, 4), 
+            promotion: move.length === 5 ? move[4] : 'q'
+        });
+        return sanitizeFEN(game.fen()); 
+    }
+}
+
 function setUpBoardAndWaitForMove_(fen) {
     return function(orientation) {
         return function() {
@@ -47,19 +59,14 @@ function setUpBoardAndWaitForMove_(fen) {
     }
 }
 
-function fenAfterMove(move) {
-    return function (fen) {
-        const game = mkGame(fen);
-        game.move({ 
-            from: move.substring(0, 2), 
-            to: move.substring(2, 4), 
-            promotion: move.length === 5 ? move[4] : 'q'
-        });
-        return sanitizeFEN(game.fen()); 
-    }
+const turnFromFEN = (fen) => {
+    const regex = /^\S+ ([bw])/;
+    const bw = fen.match(regex)[1];
+    if (bw === 'b') { return 'black'; }
+    if (bw === 'w') { return 'white'; }
 }
 
-export { destroyBoard, setUpBoardAndWaitForMove_, fenAfterMove };
+export { destroyBoard, fenAfterMove, setUpBoardAndWaitForMove_, turnFromFEN };
 
 let lastUnderPromotionHotKey = null;
 
