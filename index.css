@@ -1,0 +1,32 @@
+body {
+    background-color: rgb(100, 180, 95);
+}
+
+.label {
+    height: 19pt;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 11pt;
+    background-color: transparent;
+    border: transparent;
+    text-align: center;
+}
+
+.menuButton {
+    background-color: rgb(255, 255, 255);
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    width: 100pt;
+    height: 25pt;
+    margin: 2pt;
+}
+
+.textField {
+    width: 150pt;
+    height: 19pt;
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    text-align: center;
+    border: 1.5pt solid black;
+    margin: 2pt;
+}

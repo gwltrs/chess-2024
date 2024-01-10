@@ -1,83 +1,121 @@
 module Widgets
   ( MainMenuAction(..)
   , chessboard
+  , fileMenu
   , mainMenu
-  , textInputs
+  , mainMenuInputs
+  , newPuzzle
+  , root
+  , textFields
   )
   where
 
 import Prelude
 
-import Chess (destroyBoard, setUpBoardAndWaitForMove)
+import Chess (FEN, Move, Move', Orientation, destroyBoard, setUpBoardAndWaitForMove)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
+import Concur.React.Props (placeholder)
 import Concur.React.Props as P
 import Control.Alt ((<|>))
 import Data.Array (unsafeIndex, zip)
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
+import Data.String (length)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple, uncurry)
+import Data.Unfoldable (fromMaybe)
 import Effect (Effect)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import React.Ref as R
-import Types (FEN, Move, Move', Orientation, Puzzle)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils ((!!!))
 
 data MainMenuAction
-    = NewPuzzle String FEN
+  = NewPuzzle String FEN
 
-button :: Widget HTML Unit
-button = pure unit
+type Puzzle = 
+    { name :: String
+    , fen :: FEN 
+    , line :: Array Move
+    }
+
+type State =
+  { puzzles :: Array Puzzle
+  }
+
+button :: String -> Widget HTML Unit
+button text = void $ D.button [P.onClick, P.className "menuButton"] [D.text text]
 
 chessboard :: FEN -> Orientation -> Widget HTML Move'
 chessboard fen orient = board <|> setUp
   where 
     board = { fen: "", move: "" } <$ (D.div [P._id "board1", style] [])
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
-    style = P.style { width: "400px" }
+    style = P.style { width: "400pt" }
 
-mainMenu :: Widget HTML MainMenuAction
-mainMenu = do
+fileMenu :: Widget HTML State
+fileMenu = D.div' [{ puzzles: [] } <$ button "New"]
+
+label :: forall a. String -> Widget HTML a
+label text = D.input
+  [ P.className "label"
+  , P.readOnly true
+  , P.value text
+  , P.style { width: w <> "pt" }
+  ]
+    where w = show (50 + (7 * (length text)))
+
+mainMenu :: State -> Widget HTML State
+mainMenu state = do
+  action <- mainMenuInputs
+  case action of
+    NewPuzzle name fen -> do
+      puzzle <- newPuzzle name fen
+      mainMenu (state { puzzles = state.puzzles <> fromMaybe puzzle })
+
+mainMenuInputs :: Widget HTML MainMenuAction
+mainMenuInputs  = do
   liftEffect destroyBoard
   D.div' 
-    [ textInputs ["name", "fen"] "new puzzle" <#>
-        (\a -> NewPuzzle (a !!! 0) (a !!! 1))
+    [ textFields ["Name", "FEN"] "New Puzzle" <#>
+      (\a -> NewPuzzle (a !!! 0) (a !!! 1))
     ] 
 
 newPuzzle :: String -> FEN -> Widget HTML (Maybe Puzzle)
 newPuzzle name fen = 
-  let 
-    inner :: String -> FEN -> Array Move -> Widget HTML (Maybe Puzzle)
-    inner n f m = pure Nothing
-  in
-    pure Nothing
-
-rows :: forall a. Array (Array (Widget HTML a)) -> Widget HTML a
-rows arr = rows arr
-
-textInputs :: Array String -> String -> Widget HTML (Array String)
-textInputs placeholders buttonText = do 
-  refs :: Array (R.Ref R.NativeNode) <- liftEffect $ sequence $ (const R.createNodeRef) <$> placeholders
   D.div'
-    ((zip placeholders refs 
-      <#> (\t -> [] <$ (uncurry tiLabel) t)) 
-      <> [tiButton refs])
-     
-tiLabel :: String -> R.Ref R.NativeNode -> Widget HTML Unit
-tiLabel placeholder ref = D.input [P.ref (R.fromRef ref)] 
+    [ Nothing <$ button "Back"
+    , label name
+    , Nothing <$ button "Save"
+    ]
 
-inputValue :: R.Ref R.NativeNode -> Effect String
-inputValue i = do
-  nodeMaybe <- R.getCurrentRef i
-  case nodeMaybe of
-    Nothing -> pure ""
-    Just node -> pure (unsafeCoerce node).value
+root :: Widget HTML Unit
+root = do
+  file <- fileMenu
+  void $ mainMenu file
 
-tiButton :: Array (R.Ref R.NativeNode) -> Widget HTML (Array String)
-tiButton refs = do 
-  _ <- D.button [P.onClick] [D.text "buttonlabel"] 
-  liftEffect $ sequence (inputValue <$> refs)
+textFields :: Array String -> String -> Widget HTML (Array String)
+textFields placeholders buttonText = 
+  let
+    tf placeholder ref = D.input 
+      [ P.ref (R.fromRef ref)
+      , P.className "textField"
+      , P.placeholder placeholder
+      ]
+    tfValue i = do
+      nodeMaybe <- R.getCurrentRef i
+      case nodeMaybe of
+        Nothing -> pure ""
+        Just node -> pure (unsafeCoerce node).value
+    bttn refs = do 
+      _ <- D.button [P.onClick, P.className "menuButton"] [D.text buttonText] 
+      liftEffect $ sequence (tfValue <$> refs)
+  in do 
+    refs :: Array (R.Ref R.NativeNode) <- liftEffect $ sequence $ (const R.createNodeRef) <$> placeholders
+    D.div'
+      ((zip placeholders refs 
+        <#> (\t -> [] <$ (uncurry tf) t)) 
+        <> [bttn refs])

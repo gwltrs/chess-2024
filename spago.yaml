@@ -6,6 +6,7 @@ package:
     - console
     - effect
     - prelude
+    - unfoldable
   name: chess-2024
   test:
     dependencies: []

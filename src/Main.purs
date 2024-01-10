@@ -15,27 +15,8 @@ import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import Types (FEN, Move, Move', Orientation, Puzzle)
 import Utils ((!!!))
-import Widgets (chessboard, mainMenu, textInputs)
-
-root :: Widget HTML Unit
-root = do
-  strs <- textInputs ["", ""] "just some strings"
-  liftEffect $ log $ show strs
-  _ <- mainMenu
-  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- mainMenu
-  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  _ <- mainMenu
-  _ <- chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  void $ chessboard "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" "white"
-  
+import Widgets (MainMenuAction(..), chessboard, fileMenu, mainMenu, mainMenuInputs, newPuzzle, root, textFields)
 
 main :: Effect Unit
-main = do
-  runWidgetInDom "root" root
-  --runWidgetInDom "root" (counterWidget 0)
-  --log "🍝"
+main = runWidgetInDom "root" root
