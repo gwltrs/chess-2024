@@ -6,7 +6,7 @@ module Widgets
   , mainMenuInputs
   , newPuzzle
   , root
-  , textFields
+  , textFieldsAndButton
   )
   where
 
@@ -20,6 +20,7 @@ import Concur.React.Props (placeholder)
 import Concur.React.Props as P
 import Control.Alt ((<|>))
 import Data.Array (unsafeIndex, zip)
+import Data.Int (round, toNumber)
 import Data.Maybe (Maybe(..))
 import Data.String (length)
 import Data.Traversable (sequence)
@@ -29,27 +30,21 @@ import Effect (Effect)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+import File (saveFile)
+import JSON (serializeState)
 import React.Ref as R
+import State (Puzzle, State)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils ((!!!))
 
 data MainMenuAction
   = NewPuzzle String FEN
+  | SaveState
 
 data NewPuzzleAction
-  = CancelPuzzle
-  | AddMove Move'
+  = AddMove Move'
+  | CancelPuzzle
   | SavePuzzle
-
-type Puzzle = 
-  { name :: String
-  , fen :: FEN 
-  , line :: Array Move
-  }
-
-type State =
-  { puzzles :: Array Puzzle
-  }
 
 button :: String -> Widget HTML Unit
 button text = void $ D.button [P.onClick, P.className "menuButton"] [D.text text]
@@ -71,7 +66,7 @@ label text = D.input
   , P.value text
   , P.style { width: w <> "pt" }
   ]
-    where w = show (50 + (7 * (length text)))
+    where w = show $ round (50.0 + (6.65 * (toNumber $ length text)))
 
 mainMenu :: State -> Widget HTML State
 mainMenu state = do
@@ -80,12 +75,16 @@ mainMenu state = do
     NewPuzzle name fen -> do
       puzzle <- newPuzzle name fen
       mainMenu (state { puzzles = state.puzzles <> fromMaybe puzzle })
+    SaveState -> do
+      liftEffect $ saveFile "test.txt" "TEXT HERE ASDFASDF"
+      mainMenu state
 
 mainMenuInputs :: Widget HTML MainMenuAction
 mainMenuInputs  = do
   liftEffect destroyBoard
   D.div' 
-    [ textFields ["Name", "FEN"] "New Puzzle" <#>
+    [ SaveState <$ button "Save"
+    , textFieldsAndButton ["Name", "FEN"] "New Puzzle" <#>
       (\a -> NewPuzzle (a !!! 0) (a !!! 1))
     ] 
 
@@ -113,8 +112,8 @@ root = do
   file <- fileMenu
   void $ mainMenu file
 
-textFields :: Array String -> String -> Widget HTML (Array String)
-textFields placeholders buttonText = 
+textFieldsAndButton :: Array String -> String -> Widget HTML (Array String)
+textFieldsAndButton placeholders buttonText = 
   let
     tf placeholder ref = D.input 
       [ P.ref (R.fromRef ref)

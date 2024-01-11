@@ -16,7 +16,7 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Utils ((!!!))
-import Widgets (MainMenuAction(..), chessboard, fileMenu, mainMenu, mainMenuInputs, newPuzzle, root, textFields)
+import Widgets (root)
 
 main :: Effect Unit
 main = runWidgetInDom "root" root

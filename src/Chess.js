@@ -2,14 +2,27 @@
 
 var previousBoard = null;
 
-function destroyBoard() {
+let lastUnderPromotionHotKey = null;
+
+try {
+    document.addEventListener('keydown', e => {
+        const letters = ['b', 'n', 'r'];
+        for (const l of letters) {
+            if ([l, l.toUpperCase()].includes(e.key)) {
+                lastUnderPromotionHotKey = { letter: l, seconds: timestamp() };
+            }
+        }
+    });
+} catch (err) {}
+
+export function destroyBoard() {
     if (previousBoard !== null) {
         previousBoard.destroy();
     }
     previousBoard = null;
 }
 
-function fenAfterMove(move) {
+export function fenAfterMove(move) {
     return function (fen) {
         const game = mkGame(fen);
         game.move({ 
@@ -21,7 +34,7 @@ function fenAfterMove(move) {
     }
 }
 
-function setUpBoardAndWaitForMove_(fen) {
+export function setUpBoardAndWaitForMove_(fen) {
     return function(orientation) {
         return function() {
             return delay(1)
@@ -59,51 +72,11 @@ function setUpBoardAndWaitForMove_(fen) {
     }
 }
 
-const turnFromFEN = (fen) => {
+export function turnFromFEN(fen) {
     const regex = /^\S+ ([bw])/;
     const bw = fen.match(regex)[1];
     if (bw === 'b') { return 'black'; }
     if (bw === 'w') { return 'white'; }
-}
-
-export { destroyBoard, fenAfterMove, setUpBoardAndWaitForMove_, turnFromFEN };
-
-let lastUnderPromotionHotKey = null;
-
-try {
-    document.addEventListener('keydown', e => {
-        const letters = ['b', 'n', 'r'];
-        for (const l of letters) {
-            if ([l, l.toUpperCase()].includes(e.key)) {
-                lastUnderPromotionHotKey = { letter: l, seconds: timestamp() };
-            }
-        }
-    });
-} catch (err) {}
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function timestamp() {
-    return (new Date).getTime() / 1000;
-}
-
-const promotionLetter = () => {
-    if (lastUnderPromotionHotKey === null) {
-        console.log('promotionLetter()', 'q');
-        return 'q';
-    } else {
-        let nowSeconds = timestamp();
-        if ((nowSeconds - lastUnderPromotionHotKey.seconds) <= 3) {
-            lastUnderPromotionHotKey.seconds = 0;
-            console.log('promotionLetter()', lastUnderPromotionHotKey.letter);
-            return lastUnderPromotionHotKey.letter;
-        } else {
-            console.log('promotionLetter()', 'q');
-            return 'q';
-        }
-    }
 }
 
 function chessJSFEN(fen) {
@@ -132,33 +105,42 @@ function chessJSFEN(fen) {
     }
 }
 
-function mkGame(fen) {
-    return new Chess(chessJSFEN(fen));
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function sanitizeFEN(fen) {
-    return removeMoveNumberFromFEN(removeUnnecessaryEnPassantFromFEN(fen));
-};
-
-function removeEnPassantDataFromFEN(fen) {
-    return fen.replace(/ [a-h][36]/, " -");
-}
-  
-function removeUnnecessaryEnPassantFromFEN(fen) {
-    if (enPassantIsPossible(fen)) {
-        return fen;
-    } else {
-        return removeEnPassantDataFromFEN(fen);
-    }
-}
-  
 function enPassantIsPossible(rawFEN) {
     const fenWithoutEnPassant = removeEnPassantDataFromFEN(rawFEN);
     const rawGame = mkGame(rawFEN);
     const noEnPassantGame = mkGame(fenWithoutEnPassant);
     return rawGame.moves().length > noEnPassantGame.moves().length;
 }
-  
+ 
+function mkGame(fen) {
+    return new Chess(chessJSFEN(fen));
+}
+
+function promotionLetter() {
+    if (lastUnderPromotionHotKey === null) {
+        console.log('promotionLetter()', 'q');
+        return 'q';
+    } else {
+        let nowSeconds = timestamp();
+        if ((nowSeconds - lastUnderPromotionHotKey.seconds) <= 3) {
+            lastUnderPromotionHotKey.seconds = 0;
+            console.log('promotionLetter()', lastUnderPromotionHotKey.letter);
+            return lastUnderPromotionHotKey.letter;
+        } else {
+            console.log('promotionLetter()', 'q');
+            return 'q';
+        }
+    }
+}
+
+function removeEnPassantDataFromFEN(fen) {
+    return fen.replace(/ [a-h][36]/, " -");
+}
+
 function removeMoveNumberFromFEN(fen) {
     let regexToRemove = / \d+ \d+$/;
     let result = regexToRemove.exec(fen);
@@ -167,4 +149,20 @@ function removeMoveNumberFromFEN(fen) {
     } else {
         return fen.substring(0, result.index);
     }
+} 
+
+function removeUnnecessaryEnPassantFromFEN(fen) {
+    if (enPassantIsPossible(fen)) {
+        return fen;
+    } else {
+        return removeEnPassantDataFromFEN(fen);
+    }
+}
+ 
+function sanitizeFEN(fen) {
+    return removeMoveNumberFromFEN(removeUnnecessaryEnPassantFromFEN(fen));
+};
+
+function timestamp() {
+    return (new Date).getTime() / 1000;
 }
