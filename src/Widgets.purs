@@ -30,12 +30,16 @@ import Effect (Effect)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import File (saveFile)
+import File (loadFile, saveFile)
 import JSON (serializeState)
 import React.Ref as R
 import State (Puzzle, State)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils ((!!!))
+
+data FileMenuAction
+  = LoadFile
+  | NewFile
 
 data MainMenuAction
   = NewPuzzle String FEN
@@ -57,7 +61,19 @@ chessboard fen orient = board <|> setUp
     style = P.style { width: "400pt" }
 
 fileMenu :: Widget HTML State
-fileMenu = D.div' [{ puzzles: [] } <$ button "New"]
+fileMenu = do
+  action <- D.div' 
+    [ NewFile <$ button "New"
+    , LoadFile <$ button "Load"
+    ]
+  case action of
+    LoadFile -> do
+      liftEffect $ log "LoadFile start"
+      fileText <- liftAff loadFile
+      -- liftEffect $ log $ show $ length $ fileText
+      liftEffect $ log $ show fileText
+      pure { puzzles: [] }
+    NewFile -> pure { puzzles: [] }
 
 label :: forall a. String -> Widget HTML a
 label text = D.input
