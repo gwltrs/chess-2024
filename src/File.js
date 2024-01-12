@@ -19,10 +19,8 @@ export function loadFile_(just) {
     return function(nothing) {
         return function() {
             return new Promise((res, rej) => {
-                console.log('loadFile_ begin');
                 const fileInput = document.getElementById('fileInput');
                 fileInput.addEventListener('change', () => {
-                    console.log('loadFile_ change', fileInput.files);
                     const file = fileInput.files[0];
                     const fileReader = new FileReader();
                     fileReader.onload = (e) => {
@@ -34,11 +32,10 @@ export function loadFile_(just) {
                     }
                 });
                 fileInput.addEventListener('cancel', () => {
-                    console.log('loadFile_ cancel');
                     res(nothing);
                 });
                 fileInput.click();
             });
-        }
-    }
+        };
+    };
 }

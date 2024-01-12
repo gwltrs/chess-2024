@@ -31,7 +31,7 @@ export function fenAfterMove(move) {
             promotion: move.length === 5 ? move[4] : 'q'
         });
         return sanitizeFEN(game.fen()); 
-    }
+    };
 }
 
 export function setUpBoardAndWaitForMove_(fen) {
@@ -68,8 +68,8 @@ export function setUpBoardAndWaitForMove_(fen) {
                         previousBoard = board;
                     });
                 });
-        }
-    }
+        };
+    };
 }
 
 export function turnFromFEN(fen) {

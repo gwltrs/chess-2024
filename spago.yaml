@@ -6,6 +6,7 @@ package:
     - console
     - effect
     - prelude
+    - simple-json
     - unfoldable
   name: chess-2024
   test:

@@ -31,11 +31,11 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import File (loadFile, saveFile)
-import JSON (serializeState)
+import JSON (parseState, serializeState)
 import React.Ref as R
 import State (Puzzle, State)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils ((!!!))
+import Utils (popup, (!!!))
 
 data FileMenuAction
   = LoadFile
@@ -67,13 +67,21 @@ fileMenu = do
     , LoadFile <$ button "Load"
     ]
   case action of
-    LoadFile -> do
-      liftEffect $ log "LoadFile start"
-      fileText <- liftAff loadFile
-      -- liftEffect $ log $ show $ length $ fileText
-      liftEffect $ log $ show fileText
-      pure { puzzles: [] }
     NewFile -> pure { puzzles: [] }
+    LoadFile -> do
+      fileTextMaybe <- liftAff loadFile 
+        <|> (Nothing <$ fileMenu)
+      case fileTextMaybe of
+        Nothing -> fileMenu
+        Just fileText ->
+          case parseState fileText of
+            Nothing -> do 
+              liftEffect $ popup "Incorrect Format"
+              fileMenu
+            Just state -> pure state
+      -- liftEffect $ log $ show $ length $ fileText
+      --liftEffect $ log $ show fileTextMaybe
+      --pure { puzzles: [] }
 
 label :: forall a. String -> Widget HTML a
 label text = D.input
