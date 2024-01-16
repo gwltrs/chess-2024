@@ -34,6 +34,19 @@ export function fenAfterMove(move) {
     };
 }
 
+export function fenIsValid(fen) {
+    try {
+        let obj = (new Chess()).validate_fen(chessJSFEN(fen.trim()));
+        return obj.valid;
+    } catch (err) {
+        return false;
+    }
+};
+
+export function sanitizeFEN(fen) {
+    return removeMoveNumberFromFEN(removeUnnecessaryEnPassantFromFEN(fen));
+};
+
 export function setUpBoardAndWaitForMove_(fen) {
     return function(orientation) {
         return function() {
@@ -159,10 +172,6 @@ function removeUnnecessaryEnPassantFromFEN(fen) {
     }
 }
  
-function sanitizeFEN(fen) {
-    return removeMoveNumberFromFEN(removeUnnecessaryEnPassantFromFEN(fen));
-};
-
 function timestamp() {
     return (new Date).getTime() / 1000;
 }

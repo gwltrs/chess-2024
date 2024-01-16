@@ -5,6 +5,8 @@ module Chess
   , Move'
   , destroyBoard
   , fenAfterMove
+  , fenIsValid
+  , sanitizeFEN
   , setUpBoardAndWaitForMove
   , turnFromFEN
   )
@@ -25,9 +27,13 @@ foreign import destroyBoard :: Effect Unit
 
 foreign import fenAfterMove :: Move -> FEN -> FEN
 
-foreign import turnFromFEN :: FEN -> Color
+foreign import fenIsValid :: FEN -> Boolean
+
+foreign import sanitizeFEN :: FEN -> FEN
 
 foreign import setUpBoardAndWaitForMove_ :: FEN -> Color -> Effect (Promise Move')
+
+foreign import turnFromFEN :: FEN -> Color
 
 setUpBoardAndWaitForMove :: FEN -> Color -> Aff Move'
 setUpBoardAndWaitForMove f o = toAffE $ setUpBoardAndWaitForMove_ f o

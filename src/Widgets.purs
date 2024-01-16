@@ -12,7 +12,7 @@ module Widgets
 
 import Prelude
 
-import Chess (Color, FEN, Move, Move', destroyBoard, setUpBoardAndWaitForMove, turnFromFEN)
+import Chess (Color, FEN, Move, Move', destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM as D
@@ -20,11 +20,12 @@ import Concur.React.Props (placeholder)
 import Concur.React.Props as P
 import Control.Alt ((<|>))
 import Data.Array (unsafeIndex, zip)
+import Data.Either (Either(..))
 import Data.Int (round, toNumber)
 import Data.Maybe (Maybe(..))
 import Data.String (length)
 import Data.Traversable (sequence)
-import Data.Tuple (Tuple, uncurry)
+import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (fromMaybe)
 import Effect (Effect)
 import Effect.Aff.Class (liftAff)
@@ -36,6 +37,7 @@ import React.Ref as R
 import State (Puzzle, State)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (popup, (!!!))
+import WidgetLogic (validateNewPuzzle)
 
 data FileMenuAction
   = LoadFile
@@ -44,6 +46,7 @@ data FileMenuAction
 data MainMenuAction
   = NewPuzzle String FEN
   | SaveState
+  | PrintState
 
 data NewPuzzleAction
   = AddMove Move'
@@ -76,12 +79,9 @@ fileMenu = do
         Just fileText ->
           case parseState fileText of
             Nothing -> do 
-              liftEffect $ popup "Incorrect Format"
+              liftEffect $ popup "Incorrect File Format"
               fileMenu
             Just state -> pure state
-      -- liftEffect $ log $ show $ length $ fileText
-      --liftEffect $ log $ show fileTextMaybe
-      --pure { puzzles: [] }
 
 label :: forall a. String -> Widget HTML a
 label text = D.input
@@ -97,10 +97,18 @@ mainMenu state = do
   action <- mainMenuInputs
   case action of
     NewPuzzle name fen -> do
-      puzzle <- newPuzzle name fen
-      mainMenu (state { puzzles = state.puzzles <> fromMaybe puzzle })
+      case validateNewPuzzle state.puzzles name fen of
+        Left errMsg -> do
+          liftEffect $ popup errMsg
+          mainMenu state
+        Right (Tuple name' fen') -> do
+          puzzle <- newPuzzle name' fen'
+          mainMenu (state { puzzles = state.puzzles <> fromMaybe puzzle })
     SaveState -> do
-      liftEffect $ saveFile "test.txt" "TEXT HERE ASDFASDF"
+      liftEffect $ saveFile "data.txt" (serializeState state)
+      mainMenu state
+    PrintState -> do
+      liftEffect $ log $ show state
       mainMenu state
 
 mainMenuInputs :: Widget HTML MainMenuAction
@@ -110,6 +118,7 @@ mainMenuInputs  = do
     [ SaveState <$ button "Save"
     , textFieldsAndButton ["Name", "FEN"] "New Puzzle" <#>
       (\a -> NewPuzzle (a !!! 0) (a !!! 1))
+    , PrintState <$ button "Print State"
     ] 
 
 newPuzzle :: String -> FEN -> Widget HTML (Maybe Puzzle)
