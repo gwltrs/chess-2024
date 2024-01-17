@@ -3,3 +3,7 @@ export function popup(str) {
         alert(str);
     };
 }
+
+export function timestamp() {
+    return Math.round((new Date).getTime() / 1000);
+}

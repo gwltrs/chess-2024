@@ -60,19 +60,22 @@ export function setUpBoardAndWaitForMove_(fen) {
                             draggable: true,
                             onDragStart: (source, piece, position, orientation_) => {
                                 const game = mkGame(fen);
+                                console.log(game);
+                                if (game.game_over()) { return false; } 
                                 if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
                                     (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-                                    return false
+                                    return false;
                                 }
                             },
                             onDrop: (source, target, piece, newPos, oldPos, orientation_) => {
-                                if (source === target) { return; }
+                                if (source === target) { return 'snapback'; }
                                 const game = mkGame(fen);
-                                game.move({ 
+                                const obj = game.move({ 
                                     from: source, 
                                     to: target, 
                                     promotion: promotionLetter()
                                 });
+                                if (obj === null) { return 'snapback'; } 
                                 const newFEN = sanitizeFEN(game.fen());
                                 const move = source + target;
                                 res({ move, fen: newFEN });

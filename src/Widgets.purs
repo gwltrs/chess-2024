@@ -15,15 +15,16 @@ import Prelude
 import Chess (Color, FEN, Move, Move', destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
+import Concur.React.DOM (br')
 import Concur.React.DOM as D
 import Concur.React.Props (placeholder)
 import Concur.React.Props as P
 import Control.Alt ((<|>))
-import Data.Array (unsafeIndex, zip)
+import Data.Array (length, unsafeIndex, zip)
 import Data.Either (Either(..))
-import Data.Int (round, toNumber)
+import Data.Int (odd, round, toNumber)
 import Data.Maybe (Maybe(..))
-import Data.String (length)
+import Data.String as S
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), uncurry)
 import Data.Unfoldable (fromMaybe)
@@ -36,8 +37,8 @@ import JSON (parseState, serializeState)
 import React.Ref as R
 import State (Puzzle, State)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils (popup, (!!!))
-import WidgetLogic (validateNewPuzzle)
+import Utils (popup, timestamp, (!!!))
+import WidgetLogic (puzzlesToReview, validateNewPuzzle)
 
 data FileMenuAction
   = LoadFile
@@ -47,6 +48,7 @@ data MainMenuAction
   = NewPuzzle String FEN
   | SaveState
   | PrintState
+  | ReviewPuzzles
 
 data NewPuzzleAction
   = AddMove Move'
@@ -54,7 +56,15 @@ data NewPuzzleAction
   | SavePuzzle
 
 button :: String -> Widget HTML Unit
-button text = void $ D.button [P.onClick, P.className "menuButton"] [D.text text]
+button text = button' text true
+
+button' :: String -> Boolean -> Widget HTML Unit
+button' text enabled = void $ D.button 
+  [ P.disabled (not enabled)
+  , P.onClick
+  , P.className "menuButton"
+  ] 
+  [D.text text]
 
 chessboard :: FEN -> Color -> Widget HTML Move'
 chessboard fen orient = board <|> setUp
@@ -90,11 +100,12 @@ label text = D.input
   , P.value text
   , P.style { width: w <> "pt" }
   ]
-    where w = show $ round (50.0 + (6.65 * (toNumber $ length text)))
+    where w = show $ round (50.0 + (6.65 * (toNumber $ S.length text)))
 
 mainMenu :: State -> Widget HTML State
 mainMenu state = do
-  action <- mainMenuInputs
+  now <- liftEffect timestamp
+  action <- mainMenuInputs (length $ puzzlesToReview now state.puzzles)
   case action of
     NewPuzzle name fen -> do
       case validateNewPuzzle state.puzzles name fen of
@@ -110,14 +121,20 @@ mainMenu state = do
     PrintState -> do
       liftEffect $ log $ show state
       mainMenu state
+    ReviewPuzzles -> mainMenu state
 
-mainMenuInputs :: Widget HTML MainMenuAction
-mainMenuInputs  = do
+mainMenuInputs :: Int -> Widget HTML MainMenuAction
+mainMenuInputs numPuzzles' = do
   liftEffect destroyBoard
   D.div' 
     [ SaveState <$ button "Save"
     , textFieldsAndButton ["Name", "FEN"] "New Puzzle" <#>
       (\a -> NewPuzzle (a !!! 0) (a !!! 1))
+    , ReviewPuzzles <$ 
+        if numPuzzles' > 0 
+        then button ("Review (" <> show numPuzzles' <> ")")
+        else button' "Review" false
+    , br'
     , PrintState <$ button "Print State"
     ] 
 
@@ -130,13 +147,20 @@ newPuzzle name fen =
       action <- D.div'
         [ CancelPuzzle <$ button "Back"
         , label name
-        , SavePuzzle <$ button "Save"
+        , SavePuzzle <$ button' "Save" (odd $ length line)
         , AddMove <$> chessboard fen' orientation
         ]
       case action of
         CancelPuzzle -> pure Nothing
         AddMove m -> inner m.fen (line <> [m.move])
-        SavePuzzle -> pure $ Just { name: name, fen: fen, line: line }
+        SavePuzzle -> do
+          ts <- liftEffect timestamp
+          pure $ Just 
+            { name: name
+            , fen: fen
+            , line: line 
+            , sr: Just { box: 1, lastReview: ts }
+            }
   in
     inner fen []
 
