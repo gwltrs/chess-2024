@@ -1,5 +1,6 @@
 module Utils
   ( (!!!)
+  , Timestamp
   , forceArray
   , popup
   , timestamp
@@ -11,7 +12,8 @@ import Prelude
 import Data.Array (unsafeIndex)
 import Effect (Effect)
 import Partial.Unsafe (unsafePartial)
-import State (Timestamp)
+
+type Timestamp = Int
 
 foreign import popup :: String -> Effect Unit
 

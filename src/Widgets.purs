@@ -1,10 +1,11 @@
 module Widgets
   ( MainMenuAction(..)
-  , chessboard
+  , chessboardGetMove
   , fileMenu
   , mainMenu
   , mainMenuInputs
   , newPuzzle
+  , reviewPuzzle
   , root
   , textFieldsAndButton
   )
@@ -12,7 +13,7 @@ module Widgets
 
 import Prelude
 
-import Chess (Color, FEN, Move, Move', destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndWaitForMove, turnFromFEN)
+import Chess (Color, FEN, Move, Move', destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM (br')
@@ -35,7 +36,7 @@ import Effect.Console (log)
 import File (loadFile, saveFile)
 import JSON (parseState, serializeState)
 import React.Ref as R
-import State (Puzzle, State)
+import State (Puzzle', State, Puzzle, fromPuzzle')
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (popup, timestamp, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
@@ -55,6 +56,12 @@ data NewPuzzleAction
   | CancelPuzzle
   | SavePuzzle
 
+data ReviewPuzzleAction
+  = CancelReview
+  | NextPuzzle
+  | RetryReview
+  | ReviewMove Move'
+
 button :: String -> Widget HTML Unit
 button text = button' text true
 
@@ -66,12 +73,20 @@ button' text enabled = void $ D.button
   ] 
   [D.text text]
 
-chessboard :: FEN -> Color -> Widget HTML Move'
-chessboard fen orient = board <|> setUp
+chessboardGetMove :: FEN -> Color -> Widget HTML Move'
+chessboardGetMove fen orient = board <|> setUp
   where 
-    board = { fen: "", move: "" } <$ (D.div [P._id "board1", style] [])
+    board = { fen: "", move: "" } <$ (D.div [P._id "board1", P.style { width: "400pt" }] [])
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
-    style = P.style { width: "400pt" }
+
+chessboardMakeMove :: FEN -> Color -> Move -> Widget HTML Unit
+chessboardMakeMove fen orient move = board <|> setUp
+  where
+    board = D.div [P._id "board1", P.style { width: "400pt" }] []
+    setUp = liftAff $ setUpBoardAndMakeMove fen orient move
+
+chessboardShow :: FEN -> Color -> Widget HTML Unit
+chessboardShow fen orient = pure unit
 
 fileMenu :: Widget HTML State
 fileMenu = do
@@ -148,21 +163,46 @@ newPuzzle name fen =
         [ CancelPuzzle <$ button "Back"
         , label name
         , SavePuzzle <$ button' "Save" (odd $ length line)
-        , AddMove <$> chessboard fen' orientation
+        , AddMove <$> chessboardGetMove fen' orientation
         ]
       case action of
         CancelPuzzle -> pure Nothing
-        AddMove m -> inner m.fen (line <> [m.move])
+        AddMove m -> do
+          chessboardMakeMove fen' orientation m.move -- delete me
+          inner m.fen (line <> [m.move])
+
         SavePuzzle -> do
           ts <- liftEffect timestamp
           pure $ Just 
             { name: name
             , fen: fen
             , line: line 
-            , sr: Just { box: 1, lastReview: ts }
+            , sr: Just { box: 0, lastReview: ts }
             }
   in
     inner fen []
+
+reviewPuzzle :: Puzzle' -> Widget HTML Boolean
+reviewPuzzle puzzle = pure false
+
+-- reviewPuzzle :: Puzzle' -> Widget HTML Puzzle
+-- reviewPuzzle puzzle = 
+--   let 
+--     inner :: Boolean -> Int -> Widget HTML Puzzle
+--     inner firstTry step = do
+--       action <- D.div' 
+--         [ CancelReview <$ button "Back"
+--         , label puzzle.name
+--         , RetryReview <$ button "Retry"
+--         , NextPuzzle <$ button "Next"
+--         ]
+--       case action of
+--         CancelReview -> pure $ fromPuzzle' puzzle
+--         NextPuzzle -> pure $ fromPuzzle' puzzle
+--         RetryReview -> pure $ fromPuzzle' puzzle
+--         ReviewMove m -> pure $ fromPuzzle' puzzle
+--   in
+--     inner true 0
 
 root :: Widget HTML Unit
 root = do

@@ -7,14 +7,15 @@ module WidgetLogic
 import Prelude
 
 import Chess (FEN, fenIsValid, sanitizeFEN)
-import Constants (boxExponent, secondsPerDay)
+import Constants (secondsPerDay)
 import Data.Array (elem, filter, mapMaybe, sortWith)
 import Data.Either (Either(..))
 import Data.Int (pow)
 import Data.Maybe (Maybe)
 import Data.String (length, trim)
 import Data.Tuple (Tuple(..), fst, snd)
-import State (Puzzle, Puzzle', Timestamp, fromPuzzle', reviewAfter, toPuzzle')
+import State (Puzzle, Puzzle', fromPuzzle', reviewAfter, toPuzzle')
+import Utils (Timestamp)
 
 puzzlesToReview :: Timestamp -> Array Puzzle -> Array Puzzle'
 puzzlesToReview now puzzles = puzzles

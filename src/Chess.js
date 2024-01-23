@@ -47,6 +47,37 @@ export function sanitizeFEN(fen) {
     return removeMoveNumberFromFEN(removeUnnecessaryEnPassantFromFEN(fen));
 };
 
+export function setUpBoardAndMakeMove_(fen) {
+    return function(orientation) {
+        return function(move) {
+            return function() {
+                return delay(1)
+                    .then(() => {
+                        return new Promise((res, rej) => {
+                            destroyBoard();
+                            console.log('setUpBoardAndMakeMove_')
+                            const board = Chessboard('board1', {
+                                position: fen,
+                                orientation,
+                                onMoveEnd: (oldPos, newPos) => {
+                                    console.log('Move animation complete:')
+                                    console.log('Old position: ' + Chessboard.objToFen(oldPos))
+                                    console.log('New position: ' + Chessboard.objToFen(newPos))
+                                    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+                                    destroyBoard(); 
+                                    res(null);
+                                } 
+                            });
+                            previousBoard = board;
+                            const newFEN = fenAfterMove(move)(fen);
+                            board.position(newFEN);
+                        });
+                    });
+            };   
+        }
+    };
+}
+
 export function setUpBoardAndWaitForMove_(fen) {
     return function(orientation) {
         return function() {
@@ -54,6 +85,7 @@ export function setUpBoardAndWaitForMove_(fen) {
                 .then(() => {
                     return new Promise((res, rej) => {
                         destroyBoard();
+                        console.log('setUpBoardAndWaitForMove_')
                         const board = Chessboard('board1', {
                             position: fen,
                             orientation,

@@ -3,19 +3,21 @@ module State
   , Puzzle'
   , SpacedRepetition
   , State
-  , Timestamp
   , fromPuzzle'
   , reviewAfter
   , toPuzzle'
+  , updateSR
   )
   where
 
 import Prelude
 
 import Chess (FEN, Move)
-import Constants (boxExponent, secondsPerDay)
-import Data.Int (pow)
+import Constants (secondsPerDay, spacedRepetitionSchedule)
+import Data.Array (length)
+import Data.Int (pow, round, toNumber)
 import Data.Maybe (Maybe(..))
+import Utils (Timestamp, (!!!))
 
 type Puzzle = 
   { name :: String
@@ -40,8 +42,6 @@ type State =
   { puzzles :: Array Puzzle
   }
 
-type Timestamp = Int
-
 fromPuzzle' :: Puzzle' -> Puzzle
 fromPuzzle' p' = { name: p'.name, fen: p'.fen, line: p'.line, sr: Just p'.sr }
 
@@ -50,4 +50,13 @@ toPuzzle' p = p.sr
   <#> (\sr -> { name: p.name, fen: p.fen, line: p.line, sr: sr })
 
 reviewAfter :: SpacedRepetition -> Timestamp
-reviewAfter sr = sr.lastReview + (secondsPerDay * (pow boxExponent (sr.box - 1)))
+reviewAfter sr = round (toNumber sr.lastReview + (toNumber secondsPerDay * (spacedRepetitionSchedule !!! sr.box)))
+
+updateSR :: Timestamp -> Boolean -> SpacedRepetition -> Maybe SpacedRepetition
+updateSR now success sr =
+  if not success then
+    Just { box: 0, lastReview: now }
+  else if sr.box == (length spacedRepetitionSchedule - 1) then
+    Nothing
+  else
+    Just { box: sr.box + 1, lastReview: now }
