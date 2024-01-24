@@ -23,7 +23,7 @@ import Concur.React.Props as P
 import Control.Alt ((<|>))
 import Data.Array (length, unsafeIndex, zip)
 import Data.Either (Either(..))
-import Data.Int (odd, round, toNumber)
+import Data.Int (even, odd, round, toNumber)
 import Data.Maybe (Maybe(..))
 import Data.String as S
 import Data.Traversable (sequence)
@@ -79,7 +79,7 @@ chessboardGetMove fen orient = board <|> setUp
     board = { fen: "", move: "" } <$ (D.div [P._id "board1", P.style { width: "400pt" }] [])
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
 
-chessboardMakeMove :: FEN -> Color -> Move -> Widget HTML Unit
+chessboardMakeMove :: FEN -> Color -> Move -> Widget HTML FEN
 chessboardMakeMove fen orient move = board <|> setUp
   where
     board = D.div [P._id "board1", P.style { width: "400pt" }] []
@@ -136,7 +136,9 @@ mainMenu state = do
     PrintState -> do
       liftEffect $ log $ show state
       mainMenu state
-    ReviewPuzzles -> mainMenu state
+    ReviewPuzzles -> do
+      _ <- reviewPuzzle (puzzlesToReview now state.puzzles !!! 0)
+      mainMenu state
 
 mainMenuInputs :: Int -> Widget HTML MainMenuAction
 mainMenuInputs numPuzzles' = do
@@ -168,9 +170,7 @@ newPuzzle name fen =
       case action of
         CancelPuzzle -> pure Nothing
         AddMove m -> do
-          chessboardMakeMove fen' orientation m.move -- delete me
           inner m.fen (line <> [m.move])
-
         SavePuzzle -> do
           ts <- liftEffect timestamp
           pure $ Just 
@@ -183,7 +183,26 @@ newPuzzle name fen =
     inner fen []
 
 reviewPuzzle :: Puzzle' -> Widget HTML Boolean
-reviewPuzzle puzzle = pure false
+reviewPuzzle puzzle = 
+  let
+    orient :: Color
+    orient = turnFromFEN puzzle.fen
+    inner :: FEN -> Int -> Widget HTML Boolean
+    inner fen moveIndex = 
+      if even moveIndex then do
+        m <- chessboardGetMove fen orient
+        if m.move == (puzzle.line !!! moveIndex) then 
+          if moveIndex == (length puzzle.line - 1) then
+            pure true
+          else 
+            inner m.fen (moveIndex + 1) 
+        else
+          pure false
+      else do
+        newFEN <- chessboardMakeMove fen orient (puzzle.line !!! moveIndex)
+        inner newFEN (moveIndex + 1)
+  in
+    inner puzzle.fen 0
 
 -- reviewPuzzle :: Puzzle' -> Widget HTML Puzzle
 -- reviewPuzzle puzzle = 

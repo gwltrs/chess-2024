@@ -50,26 +50,22 @@ export function sanitizeFEN(fen) {
 export function setUpBoardAndMakeMove_(fen) {
     return function(orientation) {
         return function(move) {
+            console.log('setUpBoardAndMakeMove_', fen, orientation, move);
             return function() {
                 return delay(1)
                     .then(() => {
                         return new Promise((res, rej) => {
                             destroyBoard();
-                            console.log('setUpBoardAndMakeMove_')
+                            const newFEN = fenAfterMove(move)(fen);
                             const board = Chessboard('board1', {
                                 position: fen,
                                 orientation,
                                 onMoveEnd: (oldPos, newPos) => {
-                                    console.log('Move animation complete:')
-                                    console.log('Old position: ' + Chessboard.objToFen(oldPos))
-                                    console.log('New position: ' + Chessboard.objToFen(newPos))
-                                    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-                                    destroyBoard(); 
-                                    res(null);
+                                    res(newFEN);
+                                    //destroyBoard(); 
                                 } 
                             });
                             previousBoard = board;
-                            const newFEN = fenAfterMove(move)(fen);
                             board.position(newFEN);
                         });
                     });
@@ -85,14 +81,12 @@ export function setUpBoardAndWaitForMove_(fen) {
                 .then(() => {
                     return new Promise((res, rej) => {
                         destroyBoard();
-                        console.log('setUpBoardAndWaitForMove_')
                         const board = Chessboard('board1', {
                             position: fen,
                             orientation,
                             draggable: true,
                             onDragStart: (source, piece, position, orientation_) => {
                                 const game = mkGame(fen);
-                                console.log(game);
                                 if (game.game_over()) { return false; } 
                                 if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
                                     (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
@@ -170,16 +164,13 @@ function mkGame(fen) {
 
 function promotionLetter() {
     if (lastUnderPromotionHotKey === null) {
-        console.log('promotionLetter()', 'q');
         return 'q';
     } else {
         let nowSeconds = timestamp();
         if ((nowSeconds - lastUnderPromotionHotKey.seconds) <= 3) {
             lastUnderPromotionHotKey.seconds = 0;
-            console.log('promotionLetter()', lastUnderPromotionHotKey.letter);
             return lastUnderPromotionHotKey.letter;
         } else {
-            console.log('promotionLetter()', 'q');
             return 'q';
         }
     }
