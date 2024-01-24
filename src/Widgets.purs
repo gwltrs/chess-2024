@@ -18,7 +18,6 @@ import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM (br')
 import Concur.React.DOM as D
-import Concur.React.Props (placeholder)
 import Concur.React.Props as P
 import Control.Alt ((<|>))
 import Data.Array (length, unsafeIndex, zip)
@@ -84,6 +83,28 @@ chessboardMakeMove fen orient move = board <|> setUp
   where
     board = D.div [P._id "board1", P.style { width: "400pt" }] []
     setUp = liftAff $ setUpBoardAndMakeMove fen orient move
+
+chessboardReviewPuzzle :: Puzzle' -> Widget HTML Boolean
+chessboardReviewPuzzle puzzle = 
+  let
+    orient :: Color
+    orient = turnFromFEN puzzle.fen
+    inner :: FEN -> Int -> Widget HTML Boolean
+    inner fen moveIndex = 
+      if even moveIndex then do
+        m <- chessboardGetMove fen orient
+        if m.move == (puzzle.line !!! moveIndex) then 
+          if moveIndex == (length puzzle.line - 1) then
+            pure true
+          else 
+            inner m.fen (moveIndex + 1) 
+        else
+          pure false
+      else do
+        newFEN <- chessboardMakeMove fen orient (puzzle.line !!! moveIndex)
+        inner newFEN (moveIndex + 1)
+  in
+    inner puzzle.fen 0
 
 chessboardShow :: FEN -> Color -> Widget HTML Unit
 chessboardShow fen orient = pure unit
@@ -182,46 +203,14 @@ newPuzzle name fen =
   in
     inner fen []
 
-reviewPuzzle :: Puzzle' -> Widget HTML Boolean
+reviewPuzzle :: Puzzle' -> Widget HTML Unit
 reviewPuzzle puzzle = 
-  let
-    orient :: Color
-    orient = turnFromFEN puzzle.fen
-    inner :: FEN -> Int -> Widget HTML Boolean
-    inner fen moveIndex = 
-      if even moveIndex then do
-        m <- chessboardGetMove fen orient
-        if m.move == (puzzle.line !!! moveIndex) then 
-          if moveIndex == (length puzzle.line - 1) then
-            pure true
-          else 
-            inner m.fen (moveIndex + 1) 
-        else
-          pure false
-      else do
-        newFEN <- chessboardMakeMove fen orient (puzzle.line !!! moveIndex)
-        inner newFEN (moveIndex + 1)
-  in
-    inner puzzle.fen 0
-
--- reviewPuzzle :: Puzzle' -> Widget HTML Puzzle
--- reviewPuzzle puzzle = 
---   let 
---     inner :: Boolean -> Int -> Widget HTML Puzzle
---     inner firstTry step = do
---       action <- D.div' 
---         [ CancelReview <$ button "Back"
---         , label puzzle.name
---         , RetryReview <$ button "Retry"
---         , NextPuzzle <$ button "Next"
---         ]
---       case action of
---         CancelReview -> pure $ fromPuzzle' puzzle
---         NextPuzzle -> pure $ fromPuzzle' puzzle
---         RetryReview -> pure $ fromPuzzle' puzzle
---         ReviewMove m -> pure $ fromPuzzle' puzzle
---   in
---     inner true 0
+  D.div'
+    [ button "Back"
+    , label puzzle.name
+    , button "Next"
+    , void $ chessboardReviewPuzzle puzzle
+    ]
 
 root :: Widget HTML Unit
 root = do
