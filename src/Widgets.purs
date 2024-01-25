@@ -20,7 +20,7 @@ import Concur.React.DOM (br')
 import Concur.React.DOM as D
 import Concur.React.Props as P
 import Control.Alt ((<|>))
-import Data.Array (length, null, unsafeIndex, zip)
+import Data.Array (findIndex, head, length, null, unsafeIndex, updateAt, zip)
 import Data.Either (Either(..))
 import Data.Int (even, odd, round, toNumber)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
@@ -38,7 +38,7 @@ import JSON (parseState, serializeState)
 import React.Ref as R
 import State (Puzzle, Puzzle', State, fromPuzzle', updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils (forceJust, popup, timestamp, (!!!))
+import Utils (forceArray, forceJust, popup, timestamp, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
 
 data FileMenuAction
@@ -155,8 +155,8 @@ label text = D.input
 
 mainMenu :: State -> Widget HTML State
 mainMenu state = do
-  now <- liftEffect timestamp
-  action <- mainMenuInputs (length $ puzzlesToReview now state.puzzles)
+  puzzles' <- liftEffect $ flip puzzlesToReview state.puzzles <$> timestamp
+  action <- mainMenuInputs (length puzzles')
   case action of
     NewPuzzle name fen -> do
       case validateNewPuzzle state.puzzles name fen of
@@ -173,8 +173,9 @@ mainMenu state = do
       liftEffect $ log $ show state
       mainMenu state
     ReviewPuzzles -> do
-      _ <- reviewPuzzle (puzzlesToReview now state.puzzles !!! 0)
-      mainMenu state
+      -- _ <- reviewPuzzle (puzzles' !!! 0)
+      reviewedPuzzles <- reviewPuzzles state.puzzles
+      mainMenu state { puzzles = reviewedPuzzles }
 
 mainMenuInputs :: Int -> Widget HTML MainMenuAction
 mainMenuInputs numPuzzles' = do
@@ -253,12 +254,15 @@ reviewPuzzle puzzle =
 reviewPuzzles :: Array Puzzle -> Widget HTML (Array Puzzle)
 reviewPuzzles puzzles = do
   puzzles' <- liftEffect $ flip puzzlesToReview puzzles <$> timestamp
-  if null puzzles then do
-    liftEffect $ popup "No more puzzles to review"
-    pure puzzles
-  else
-    pure puzzles
-
+  case head puzzles' of
+    Nothing -> do
+      liftEffect $ popup "No more puzzles to review"
+      pure puzzles
+    Just p' -> do
+      p <- _.puzzle <$> (reviewPuzzle p')
+      reviewPuzzles (forceJust $ updateAt i p puzzles)
+        where i = forceJust $ findIndex (\e -> e.name == p'.name || e.fen == p'.fen) puzzles
+  
 root :: Widget HTML Unit
 root = do
   file <- fileMenu
