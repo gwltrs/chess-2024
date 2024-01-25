@@ -6,6 +6,7 @@ module State
   , fromPuzzle'
   , reviewAfter
   , toPuzzle'
+  , updatePuzzle
   , updateSR
   )
   where
@@ -60,3 +61,6 @@ updateSR now success sr =
     Nothing
   else
     Just { box: sr.box + 1, lastReview: now }
+
+updatePuzzle :: Timestamp -> Boolean -> Puzzle' -> Puzzle
+updatePuzzle now success puzzle = puzzle { sr = updateSR now success puzzle.sr }

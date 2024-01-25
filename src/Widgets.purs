@@ -13,31 +13,32 @@ module Widgets
 
 import Prelude
 
-import Chess (Color, FEN, Move, Move', destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
+import Chess (Color, FEN, Move, Move', Square, destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM (br')
 import Concur.React.DOM as D
 import Concur.React.Props as P
 import Control.Alt ((<|>))
-import Data.Array (length, unsafeIndex, zip)
+import Data.Array (length, null, unsafeIndex, zip)
 import Data.Either (Either(..))
 import Data.Int (even, odd, round, toNumber)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.String as S
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), uncurry)
-import Data.Unfoldable (fromMaybe)
+import Data.Unfoldable as U
 import Effect (Effect)
+import Effect.Aff (attempt)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import File (loadFile, saveFile)
 import JSON (parseState, serializeState)
 import React.Ref as R
-import State (Puzzle', State, Puzzle, fromPuzzle')
+import State (Puzzle, Puzzle', State, fromPuzzle', updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils (popup, timestamp, (!!!))
+import Utils (forceJust, popup, timestamp, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
 
 data FileMenuAction
@@ -55,11 +56,25 @@ data NewPuzzleAction
   | CancelPuzzle
   | SavePuzzle
 
+type ReviewAttempt =
+  { success :: Boolean
+  , fen :: FEN
+  , move :: Move
+  }
+
 data ReviewPuzzleAction
   = CancelReview
   | NextPuzzle
   | RetryReview
-  | ReviewMove Move'
+  | ReviewAttempted ReviewAttempt
+
+type ReviewResult = 
+  { puzzle :: Puzzle
+  , continue :: Boolean
+  }
+
+board :: forall a. Widget HTML a
+board = D.div [P._id "board", P.style { width: "400pt" }] []
 
 button :: String -> Widget HTML Unit
 button text = button' text true
@@ -75,39 +90,39 @@ button' text enabled = void $ D.button
 chessboardGetMove :: FEN -> Color -> Widget HTML Move'
 chessboardGetMove fen orient = board <|> setUp
   where 
-    board = { fen: "", move: "" } <$ (D.div [P._id "board1", P.style { width: "400pt" }] [])
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
 
 chessboardMakeMove :: FEN -> Color -> Move -> Widget HTML FEN
 chessboardMakeMove fen orient move = board <|> setUp
   where
-    board = D.div [P._id "board1", P.style { width: "400pt" }] []
     setUp = liftAff $ setUpBoardAndMakeMove fen orient move
 
-chessboardReviewPuzzle :: Puzzle' -> Widget HTML Boolean
+chessboardReviewPuzzle :: Puzzle' -> Widget HTML ReviewAttempt
 chessboardReviewPuzzle puzzle = 
   let
     orient :: Color
     orient = turnFromFEN puzzle.fen
-    inner :: FEN -> Int -> Widget HTML Boolean
+    inner :: FEN -> Int -> Widget HTML ReviewAttempt
     inner fen moveIndex = 
       if even moveIndex then do
         m <- chessboardGetMove fen orient
         if m.move == (puzzle.line !!! moveIndex) then 
           if moveIndex == (length puzzle.line - 1) then
-            pure true
+            pure { success: true, fen: m.fen, move: m.move }
           else 
             inner m.fen (moveIndex + 1) 
         else
-          pure false
+          pure { success: false, fen: m.fen, move: m.move }
       else do
         newFEN <- chessboardMakeMove fen orient (puzzle.line !!! moveIndex)
         inner newFEN (moveIndex + 1)
   in
     inner puzzle.fen 0
 
-chessboardShow :: FEN -> Color -> Widget HTML Unit
-chessboardShow fen orient = pure unit
+chessboardShow :: forall a. FEN -> Color -> Widget HTML a
+chessboardShow fen orient = board <|> setUp
+  where 
+    setUp = liftAff $ setUpBoardAndDoNothing fen orient
 
 fileMenu :: Widget HTML State
 fileMenu = do
@@ -150,7 +165,7 @@ mainMenu state = do
           mainMenu state
         Right (Tuple name' fen') -> do
           puzzle <- newPuzzle name' fen'
-          mainMenu (state { puzzles = state.puzzles <> fromMaybe puzzle })
+          mainMenu (state { puzzles = state.puzzles <> U.fromMaybe puzzle })
     SaveState -> do
       liftEffect $ saveFile "data.txt" (serializeState state)
       mainMenu state
@@ -203,14 +218,46 @@ newPuzzle name fen =
   in
     inner fen []
 
-reviewPuzzle :: Puzzle' -> Widget HTML Unit
+reviewPuzzle :: Puzzle' -> Widget HTML ReviewResult
 reviewPuzzle puzzle = 
-  D.div'
-    [ button "Back"
-    , label puzzle.name
-    , button "Next"
-    , void $ chessboardReviewPuzzle puzzle
-    ]
+  let 
+    inner :: Maybe ReviewAttempt -> Maybe ReviewAttempt -> Widget HTML ReviewResult
+    inner first current = do
+      action <- D.div'
+        [ CancelReview <$ button "Back"
+        , label puzzle.name
+        , RetryReview <$ button' "Retry" (isJust first)
+        , NextPuzzle <$ button' "Next" (isJust first)
+        , case current of
+            Just ca -> chessboardShow ca.fen (turnFromFEN puzzle.fen)
+            Nothing -> ReviewAttempted <$> chessboardReviewPuzzle puzzle
+        ]
+      case action of
+        CancelReview ->
+          case first of
+            Nothing -> 
+              pure { puzzle: fromPuzzle' puzzle, continue: false }
+            Just f -> do
+              now <- liftEffect timestamp
+              pure { puzzle: updatePuzzle now f.success puzzle, continue: false }
+        NextPuzzle -> do
+          now <- liftEffect timestamp
+          pure { puzzle: updatePuzzle now (forceJust first).success puzzle, continue: true }
+        RetryReview ->
+          inner first Nothing
+        ReviewAttempted attempt ->
+          inner (Just $ fromMaybe attempt first) (Just attempt)
+  in 
+    inner Nothing Nothing
+
+reviewPuzzles :: Array Puzzle -> Widget HTML (Array Puzzle)
+reviewPuzzles puzzles = do
+  puzzles' <- liftEffect $ flip puzzlesToReview puzzles <$> timestamp
+  if null puzzles then do
+    liftEffect $ popup "No more puzzles to review"
+    pure puzzles
+  else
+    pure puzzles
 
 root :: Widget HTML Unit
 root = do
