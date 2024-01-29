@@ -5,6 +5,7 @@ module Utils
   , forceArray
   , forceJust
   , popup
+  , prettifyJSON
   , timeMS
   , timeSec
   )
@@ -22,6 +23,8 @@ type Milliseconds = Number
 type Seconds = Int
 
 foreign import popup :: String -> Effect Unit
+
+foreign import prettifyJSON :: String -> String
 
 foreign import timeMS :: Effect Milliseconds
 

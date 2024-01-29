@@ -39,7 +39,7 @@ import React.Ref as R
 import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, toHighlight)
 import State (Puzzle, Puzzle', State, fromPuzzle', updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, timeMS, timeSec, (!!!))
+import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, prettifyJSON, timeMS, timeSec, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
 
 data FileMenuAction
@@ -164,7 +164,7 @@ mainMenu state = do
           puzzle <- newPuzzle name' fen'
           mainMenu (state { puzzles = state.puzzles <> U.fromMaybe puzzle })
     SaveState -> do
-      liftEffect $ saveFile "data.txt" (serializeState state)
+      liftEffect $ saveFile "data.txt" (prettifyJSON $ serializeState state)
       mainMenu state
     PrintState -> do
       liftEffect $ log $ show state
@@ -241,14 +241,14 @@ reviewPuzzle puzzle =
           now <- liftEffect timeSec
           pure { puzzle: updatePuzzle now (forceJust firstTry) puzzle, continue: true }
         RetryReview -> do
-          start' <- liftEffect timeMS
-          inner start' firstTry Nothing
+          newStart <- liftEffect timeMS
+          inner newStart firstTry Nothing
         ReviewAttempted attempt -> do
           end <- liftEffect timeMS
           inner start (Just $ fromMaybe attempt.correct firstTry) (Just $ fromReviewAttempt start end puzzle attempt)
   in do
-    start <- liftEffect timeMS
-    inner start Nothing Nothing
+    newStart <- liftEffect timeMS
+    inner newStart Nothing Nothing
 
 reviewPuzzles :: Array Puzzle -> Widget' (Array Puzzle)
 reviewPuzzles puzzles = do
