@@ -4,6 +4,10 @@ export function popup(str) {
     };
 }
 
-export function timestamp() {
-    return Math.round((new Date).getTime() / 1000);
+export function timeMS() {
+    return new Date().getTime();
+}
+
+export function timeSec() {
+    return Math.round(timeMS() / 1000);
 }

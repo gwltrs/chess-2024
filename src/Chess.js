@@ -49,17 +49,22 @@ export function sanitizeFEN(fen) {
 
 export function setUpBoardAndDoNothing_(fen) {
     return function(orientation) {
-        return function() {
-            return delay(1).then(() => {
-                return new Promise((res, rej) => {
-                    destroyBoard();
-                    const board = Chessboard('board', {
-                        position: fen,
-                        orientation
+        return function(highlight) {
+            return function() {
+                return delay(1).then(() => {
+                    return new Promise((res, rej) => {
+                        destroyBoard();
+                        const board = Chessboard('board', {
+                            position: fen,
+                            orientation
+                        });
+                        previousBoard = board;
+                        if (!!highlight) {
+                            colorSquare(highlight.square, highlight.hex);
+                        }
                     });
-                    previousBoard = board;
                 });
-            });
+            }
         }
     };
 }
@@ -160,6 +165,11 @@ function chessJSFEN(fen) {
     } else if (numSpaces === 1) {
         return fen + FEN_CASTLE_ENPASSANT_MOVE_SUFFIX;
     }
+}
+
+function colorSquare(square, hex) {
+    let s = $('#board .square-' + square);
+    s.css('background', hex);
 }
 
 function delay(ms) {

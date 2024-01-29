@@ -3,6 +3,7 @@ module State
   , Puzzle'
   , SpacedRepetition
   , State
+  , allottedSeconds
   , fromPuzzle'
   , reviewAfter
   , toPuzzle'
@@ -18,42 +19,48 @@ import Constants (secondsPerDay, spacedRepetitionSchedule)
 import Data.Array (length)
 import Data.Int (pow, round, toNumber)
 import Data.Maybe (Maybe(..))
-import Utils (Timestamp, (!!!))
+import Utils (Milliseconds, Seconds, (!!!))
 
-type Puzzle = 
+type Puzzle =
   { name :: String
-  , fen :: FEN 
+  , fen :: FEN
   , line :: Array Move
   , sr :: Maybe SpacedRepetition
   }
 
 type Puzzle' = 
   { name :: String
-  , fen :: FEN 
+  , fen :: FEN
   , line :: Array Move
   , sr :: SpacedRepetition
   }
 
 type SpacedRepetition = 
   { box :: Int
-  , lastReview :: Timestamp 
+  , lastReview :: Int 
   }
 
 type State =
   { puzzles :: Array Puzzle
   }
 
+allottedSeconds :: Puzzle' -> Seconds
+allottedSeconds p = 3 + (2 * numMoves) + (1 * p.sr.box)
+  where 
+    numMoves = ((length p.line - 1) / 2) + 1
+  
 fromPuzzle' :: Puzzle' -> Puzzle
 fromPuzzle' p' = { name: p'.name, fen: p'.fen, line: p'.line, sr: Just p'.sr }
+
 
 toPuzzle' :: Puzzle -> Maybe Puzzle'
 toPuzzle' p = p.sr 
   <#> (\sr -> { name: p.name, fen: p.fen, line: p.line, sr: sr })
 
-reviewAfter :: SpacedRepetition -> Timestamp
+reviewAfter :: SpacedRepetition -> Seconds
 reviewAfter sr = round (toNumber sr.lastReview + (toNumber secondsPerDay * (spacedRepetitionSchedule !!! sr.box)))
 
-updateSR :: Timestamp -> Boolean -> SpacedRepetition -> Maybe SpacedRepetition
+updateSR :: Seconds -> Boolean -> SpacedRepetition -> Maybe SpacedRepetition
 updateSR now success sr =
   if not success then
     Just { box: 0, lastReview: now }
@@ -62,5 +69,5 @@ updateSR now success sr =
   else
     Just { box: sr.box + 1, lastReview: now }
 
-updatePuzzle :: Timestamp -> Boolean -> Puzzle' -> Puzzle
+updatePuzzle :: Seconds -> Boolean -> Puzzle' -> Puzzle
 updatePuzzle now success puzzle = puzzle { sr = updateSR now success puzzle.sr }

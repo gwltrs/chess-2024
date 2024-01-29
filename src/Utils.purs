@@ -1,25 +1,31 @@
 module Utils
   ( (!!!)
-  , Timestamp
+  , Milliseconds
+  , Seconds
   , forceArray
   , forceJust
   , popup
-  , timestamp
+  , timeMS
+  , timeSec
   )
   where
 
 import Prelude
 
 import Data.Array (unsafeIndex)
+import Data.Int (round)
 import Data.Maybe (Maybe, fromJust)
 import Effect (Effect)
 import Partial.Unsafe (unsafePartial)
 
-type Timestamp = Int
+type Milliseconds = Number
+type Seconds = Int
 
 foreign import popup :: String -> Effect Unit
 
-foreign import timestamp :: Effect Timestamp
+foreign import timeMS :: Effect Milliseconds
+
+foreign import timeSec :: Effect Seconds
 
 forceArray :: forall a. Array a -> Int -> a
 forceArray a i = unsafePartial $ unsafeIndex a i

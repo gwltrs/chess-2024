@@ -15,9 +15,8 @@ import Data.Maybe (Maybe)
 import Data.String (length, trim)
 import Data.Tuple (Tuple(..), fst, snd)
 import State (Puzzle, Puzzle', fromPuzzle', reviewAfter, toPuzzle')
-import Utils (Timestamp)
 
-puzzlesToReview :: Timestamp -> Array Puzzle -> Array Puzzle'
+puzzlesToReview :: Int -> Array Puzzle -> Array Puzzle'
 puzzlesToReview now puzzles = puzzles
     # mapMaybe toPuzzle'
     <#> (\p -> Tuple (reviewAfter p.sr) p)

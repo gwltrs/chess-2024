@@ -13,7 +13,7 @@ module Widgets
 
 import Prelude
 
-import Chess (Color, FEN, Move, Move', Square, destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
+import Chess (Color, FEN, Move, Move', Square, Highlight, destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM (br')
@@ -36,9 +36,10 @@ import Effect.Console (log)
 import File (loadFile, saveFile)
 import JSON (parseState, serializeState)
 import React.Ref as R
+import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, toHighlight)
 import State (Puzzle, Puzzle', State, fromPuzzle', updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils (forceArray, forceJust, popup, timestamp, (!!!))
+import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, timeMS, timeSec, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
 
 data FileMenuAction
@@ -56,12 +57,6 @@ data NewPuzzleAction
   | CancelPuzzle
   | SavePuzzle
 
-type ReviewAttempt =
-  { success :: Boolean
-  , fen :: FEN
-  , move :: Move
-  }
-
 data ReviewPuzzleAction
   = CancelReview
   | NextPuzzle
@@ -73,13 +68,15 @@ type ReviewResult =
   , continue :: Boolean
   }
 
-board :: forall a. Widget HTML a
+type Widget' = Widget HTML
+
+board :: forall a. Widget' a
 board = D.div [P._id "board", P.style { width: "400pt" }] []
 
-button :: String -> Widget HTML Unit
+button :: String -> Widget' Unit
 button text = button' text true
 
-button' :: String -> Boolean -> Widget HTML Unit
+button' :: String -> Boolean -> Widget' Unit
 button' text enabled = void $ D.button 
   [ P.disabled (not enabled)
   , P.onClick
@@ -87,44 +84,44 @@ button' text enabled = void $ D.button
   ] 
   [D.text text]
 
-chessboardGetMove :: FEN -> Color -> Widget HTML Move'
+chessboardGetMove :: FEN -> Color -> Widget' Move'
 chessboardGetMove fen orient = board <|> setUp
   where 
     setUp = liftAff $ setUpBoardAndWaitForMove fen orient
 
-chessboardMakeMove :: FEN -> Color -> Move -> Widget HTML FEN
+chessboardMakeMove :: FEN -> Color -> Move -> Widget' FEN
 chessboardMakeMove fen orient move = board <|> setUp
   where
     setUp = liftAff $ setUpBoardAndMakeMove fen orient move
 
-chessboardReviewPuzzle :: Puzzle' -> Widget HTML ReviewAttempt
+chessboardReviewPuzzle :: Puzzle' -> Widget' ReviewAttempt
 chessboardReviewPuzzle puzzle = 
   let
     orient :: Color
     orient = turnFromFEN puzzle.fen
-    inner :: FEN -> Int -> Widget HTML ReviewAttempt
+    inner :: FEN -> Int -> Widget' ReviewAttempt
     inner fen moveIndex = 
       if even moveIndex then do
         m <- chessboardGetMove fen orient
         if m.move == (puzzle.line !!! moveIndex) then 
           if moveIndex == (length puzzle.line - 1) then
-            pure { success: true, fen: m.fen, move: m.move }
+            pure { correct: true, fen: m.fen, move: m.move }
           else 
             inner m.fen (moveIndex + 1) 
         else
-          pure { success: false, fen: m.fen, move: m.move }
+          pure { correct: false, fen: m.fen, move: m.move }
       else do
         newFEN <- chessboardMakeMove fen orient (puzzle.line !!! moveIndex)
         inner newFEN (moveIndex + 1)
   in
     inner puzzle.fen 0
 
-chessboardShow :: forall a. FEN -> Color -> Widget HTML a
-chessboardShow fen orient = board <|> setUp
+chessboardShow :: forall a. FEN -> Color -> Maybe Highlight -> Widget' a
+chessboardShow fen orient highlight = board <|> setUp
   where 
-    setUp = liftAff $ setUpBoardAndDoNothing fen orient
+    setUp = liftAff $ setUpBoardAndDoNothing fen orient highlight
 
-fileMenu :: Widget HTML State
+fileMenu :: Widget' State
 fileMenu = do
   action <- D.div' 
     [ NewFile <$ button "New"
@@ -144,7 +141,7 @@ fileMenu = do
               fileMenu
             Just state -> pure state
 
-label :: forall a. String -> Widget HTML a
+label :: forall a. String -> Widget' a
 label text = D.input
   [ P.className "label"
   , P.readOnly true
@@ -153,9 +150,9 @@ label text = D.input
   ]
     where w = show $ round (50.0 + (6.65 * (toNumber $ S.length text)))
 
-mainMenu :: State -> Widget HTML State
+mainMenu :: State -> Widget' State
 mainMenu state = do
-  puzzles' <- liftEffect $ flip puzzlesToReview state.puzzles <$> timestamp
+  puzzles' <- liftEffect $ flip puzzlesToReview state.puzzles <$> timeSec
   action <- mainMenuInputs (length puzzles')
   case action of
     NewPuzzle name fen -> do
@@ -173,11 +170,10 @@ mainMenu state = do
       liftEffect $ log $ show state
       mainMenu state
     ReviewPuzzles -> do
-      -- _ <- reviewPuzzle (puzzles' !!! 0)
       reviewedPuzzles <- reviewPuzzles state.puzzles
       mainMenu state { puzzles = reviewedPuzzles }
 
-mainMenuInputs :: Int -> Widget HTML MainMenuAction
+mainMenuInputs :: Int -> Widget' MainMenuAction
 mainMenuInputs numPuzzles' = do
   liftEffect destroyBoard
   D.div' 
@@ -192,11 +188,11 @@ mainMenuInputs numPuzzles' = do
     , PrintState <$ button "Print State"
     ] 
 
-newPuzzle :: String -> FEN -> Widget HTML (Maybe Puzzle)
+newPuzzle :: String -> FEN -> Widget' (Maybe Puzzle)
 newPuzzle name fen = 
   let 
     orientation = turnFromFEN fen
-    inner :: FEN -> Array Move -> Widget HTML (Maybe Puzzle)
+    inner :: FEN -> Array Move -> Widget' (Maybe Puzzle)
     inner fen' line = do
       action <- D.div'
         [ CancelPuzzle <$ button "Back"
@@ -209,66 +205,70 @@ newPuzzle name fen =
         AddMove m -> do
           inner m.fen (line <> [m.move])
         SavePuzzle -> do
-          ts <- liftEffect timestamp
+          t <- liftEffect timeSec
           pure $ Just 
             { name: name
             , fen: fen
             , line: line 
-            , sr: Just { box: 0, lastReview: ts }
+            , sr: Just { box: 0, lastReview: t }
             }
   in
     inner fen []
 
-reviewPuzzle :: Puzzle' -> Widget HTML ReviewResult
+reviewPuzzle :: Puzzle' -> Widget' ReviewResult
 reviewPuzzle puzzle = 
-  let 
-    inner :: Maybe ReviewAttempt -> Maybe ReviewAttempt -> Widget HTML ReviewResult
-    inner first current = do
+  let
+    inner :: Milliseconds ->  Maybe Boolean -> Maybe ReviewAttempt' -> Widget' ReviewResult
+    inner start firstTry currentTry = do
       action <- D.div'
         [ CancelReview <$ button "Back"
         , label puzzle.name
-        , RetryReview <$ button' "Retry" (isJust first)
-        , NextPuzzle <$ button' "Next" (isJust first)
-        , case current of
-            Just ca -> chessboardShow ca.fen (turnFromFEN puzzle.fen)
+        , RetryReview <$ button' "Retry" (isJust firstTry)
+        , NextPuzzle <$ button' "Next" (isJust firstTry)
+        , case currentTry of
+            Just ca -> chessboardShow ca.fen (turnFromFEN puzzle.fen) (Just $ toHighlight ca)
             Nothing -> ReviewAttempted <$> chessboardReviewPuzzle puzzle
         ]
       case action of
         CancelReview ->
-          case first of
+          case firstTry of
             Nothing -> 
               pure { puzzle: fromPuzzle' puzzle, continue: false }
-            Just f -> do
-              now <- liftEffect timestamp
-              pure { puzzle: updatePuzzle now f.success puzzle, continue: false }
+            Just correct -> do
+              now <- liftEffect timeSec
+              pure { puzzle: updatePuzzle now correct puzzle, continue: false }
         NextPuzzle -> do
-          now <- liftEffect timestamp
-          pure { puzzle: updatePuzzle now (forceJust first).success puzzle, continue: true }
-        RetryReview ->
-          inner first Nothing
-        ReviewAttempted attempt ->
-          inner (Just $ fromMaybe attempt first) (Just attempt)
-  in 
-    inner Nothing Nothing
+          now <- liftEffect timeSec
+          pure { puzzle: updatePuzzle now (forceJust firstTry) puzzle, continue: true }
+        RetryReview -> do
+          start' <- liftEffect timeMS
+          inner start' firstTry Nothing
+        ReviewAttempted attempt -> do
+          end <- liftEffect timeMS
+          inner start (Just $ fromMaybe attempt.correct firstTry) (Just $ fromReviewAttempt start end puzzle attempt)
+  in do
+    start <- liftEffect timeMS
+    inner start Nothing Nothing
 
-reviewPuzzles :: Array Puzzle -> Widget HTML (Array Puzzle)
+reviewPuzzles :: Array Puzzle -> Widget' (Array Puzzle)
 reviewPuzzles puzzles = do
-  puzzles' <- liftEffect $ flip puzzlesToReview puzzles <$> timestamp
+  puzzles' <- liftEffect $ flip puzzlesToReview puzzles <$> timeSec
   case head puzzles' of
     Nothing -> do
       liftEffect $ popup "No more puzzles to review"
       pure puzzles
     Just p' -> do
-      p <- _.puzzle <$> (reviewPuzzle p')
-      reviewPuzzles (forceJust $ updateAt i p puzzles)
-        where i = forceJust $ findIndex (\e -> e.name == p'.name || e.fen == p'.fen) puzzles
+      let i = forceJust $ findIndex (\e -> e.name == p'.name || e.fen == p'.fen) puzzles
+      a <- reviewPuzzle p'
+      let newPuzzles = forceJust $ updateAt i a.puzzle puzzles 
+      if a.continue then reviewPuzzles newPuzzles else pure newPuzzles
   
-root :: Widget HTML Unit
+root :: Widget' Unit
 root = do
   file <- fileMenu
   void $ mainMenu file
 
-textFieldsAndButton :: Array String -> String -> Widget HTML (Array String)
+textFieldsAndButton :: Array String -> String -> Widget' (Array String)
 textFieldsAndButton placeholders buttonText = 
   let
     tf placeholder ref = D.input 
