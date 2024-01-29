@@ -20,7 +20,7 @@ import Concur.React.DOM (br')
 import Concur.React.DOM as D
 import Concur.React.Props as P
 import Control.Alt ((<|>))
-import Data.Array (findIndex, head, length, null, unsafeIndex, updateAt, zip)
+import Data.Array (findIndex, head, length, null, sortWith, unsafeIndex, updateAt, zip)
 import Data.Either (Either(..))
 import Data.Int (even, odd, round, toNumber)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
@@ -162,7 +162,8 @@ mainMenu state = do
           mainMenu state
         Right (Tuple name' fen') -> do
           puzzle <- newPuzzle name' fen'
-          mainMenu (state { puzzles = state.puzzles <> U.fromMaybe puzzle })
+          let newPuzzles = sortWith _.name (state.puzzles <> U.fromMaybe puzzle)
+          mainMenu (state { puzzles = newPuzzles })
     SaveState -> do
       liftEffect $ saveFile "data.txt" (prettifyJSON $ serializeState state)
       mainMenu state
