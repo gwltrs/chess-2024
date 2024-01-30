@@ -4,6 +4,7 @@ module Utils
   , Seconds
   , forceArray
   , forceJust
+  , forceRight
   , popup
   , prettifyJSON
   , timeMS
@@ -14,10 +15,11 @@ module Utils
 import Prelude
 
 import Data.Array (unsafeIndex)
+import Data.Either (Either(..), hush)
 import Data.Int (round)
 import Data.Maybe (Maybe, fromJust)
 import Effect (Effect)
-import Partial.Unsafe (unsafePartial)
+import Partial.Unsafe (unsafeCrashWith, unsafePartial)
 
 type Milliseconds = Number
 type Seconds = Int
@@ -35,5 +37,8 @@ forceArray a i = unsafePartial $ unsafeIndex a i
 
 forceJust :: forall a. Maybe a -> a
 forceJust m = unsafePartial $ fromJust m
+
+forceRight :: forall a b. Either a b -> b
+forceRight = forceJust <<< hush
 
 infixl 8 forceArray as !!!
