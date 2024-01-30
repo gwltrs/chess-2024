@@ -52,7 +52,6 @@ allottedSeconds p = 3 + (2 * numMoves) + (1 * p.sr.box)
 fromPuzzle' :: Puzzle' -> Puzzle
 fromPuzzle' p' = { name: p'.name, fen: p'.fen, line: p'.line, sr: Just p'.sr }
 
-
 toPuzzle' :: Puzzle -> Maybe Puzzle'
 toPuzzle' p = p.sr 
   <#> (\sr -> { name: p.name, fen: p.fen, line: p.line, sr: sr })

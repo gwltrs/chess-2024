@@ -116,14 +116,15 @@ export function setUpBoardAndWaitForMove_(fen) {
                         onDrop: (source, target, piece, newPos, oldPos, orientation_) => {
                             if (source === target) { return 'snapback'; }
                             const game = mkGame(fen);
+                            const pl = promotionLetter();
                             const obj = game.move({ 
                                 from: source, 
                                 to: target, 
-                                promotion: promotionLetter()
+                                promotion: pl
                             });
                             if (obj === null) { return 'snapback'; } 
                             const newFEN = sanitizeFEN(game.fen());
-                            const move = source + target;
+                            const move = source + target + (pl === 'q' ? '' : pl);
                             res({ move, fen: newFEN });
                         }
                     });
