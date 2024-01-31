@@ -160,7 +160,7 @@ label text = D.input
 mainMenu :: State -> Widget' State
 mainMenu s = do
   puzzles' <- liftEffect $ flip puzzlesToReview s.puzzles <$> timeSec
-  action <- mainMenuInputs (length puzzles')
+  action <- mainMenuInputs (length puzzles') (isJust $ previousPuzzle s)
   case action of
     NewPuzzle name fen -> do
       case validateNewPuzzle s.puzzles name fen of
@@ -168,9 +168,12 @@ mainMenu s = do
           liftEffect $ popup errMsg
           mainMenu s
         Right (Tuple name' fen') -> do
-          puzzle <- newPuzzle name' fen'
-          let newPuzzles = sortWith _.name (s.puzzles <> U.fromMaybe puzzle)
-          mainMenu (s { puzzles = newPuzzles })
+          p <- newPuzzle name' fen'
+          case p of
+            Nothing -> mainMenu s
+            Just p' ->
+              let newPuzzles = sortWith _.name (s.puzzles <> [p']) in
+              mainMenu (s { previous = Just p'.name, puzzles = newPuzzles })
     PracticePrevious -> do
       fromMaybe (pure unit) (practicePuzzle <$> previousPuzzle s)
       mainMenu s
@@ -184,18 +187,18 @@ mainMenu s = do
       liftEffect $ saveFile "data.txt" (prettifyJSON $ serializeState s)
       mainMenu s
 
-mainMenuInputs :: Int -> Widget' MainMenuAction
-mainMenuInputs numPuzzles' = do
+mainMenuInputs :: Int -> Boolean -> Widget' MainMenuAction
+mainMenuInputs numPuzzlesToReview hasPrevious = do
   liftEffect destroyBoard
   D.div' 
     [ SaveState <$ button "Save"
     , textFieldsAndButton ["Name", "FEN"] "New Puzzle" <#>
       (\a -> NewPuzzle (a !!! 0) (a !!! 1))
     , ReviewPuzzles <$ 
-        if numPuzzles' > 0 
-        then button ("Review (" <> show numPuzzles' <> ")")
+        if numPuzzlesToReview > 0 
+        then button ("Review (" <> show numPuzzlesToReview <> ")")
         else button' "Review" false
-    , PracticePrevious <$ button "Previous"
+    , PracticePrevious <$ button' "Previous" hasPrevious
     , br'
     , PrintState <$ button "Print State"
     ] 
