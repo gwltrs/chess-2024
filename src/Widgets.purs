@@ -13,14 +13,14 @@ module Widgets
 
 import Prelude
 
-import Chess (Color, FEN, Move, Move', Square, Highlight, destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
+import Chess (Color, FEN, Highlight, Move, Move', Square, destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM (br')
 import Concur.React.DOM as D
 import Concur.React.Props as P
 import Control.Alt ((<|>))
-import Data.Array (findIndex, head, length, null, sortWith, unsafeIndex, updateAt, zip)
+import Data.Array (find, findIndex, head, length, null, sortWith, unsafeIndex, updateAt, zip)
 import Data.Either (Either(..))
 import Data.Int (even, odd, round, toNumber)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
@@ -35,9 +35,10 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import File (loadFile, saveFile)
 import JSON (parseState, serializeState)
+import React.DOM.Dynamic (object)
 import React.Ref as R
-import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, toHighlight)
-import State (Puzzle, Puzzle', State, fromPuzzle', updatePuzzle)
+import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, toHighlight, toHighlight')
+import State (Puzzle, Puzzle', State, previousPuzzle, toPuzzle, updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, prettifyJSON, timeMS, timeSec, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
@@ -50,12 +51,18 @@ data MainMenuAction
   = NewPuzzle String FEN
   | SaveState
   | PrintState
+  | PracticePrevious
   | ReviewPuzzles
 
 data NewPuzzleAction
   = AddMove Move'
   | CancelPuzzle
   | SavePuzzle
+  
+data PracticePuzzleAction
+  = CancelPractice
+  | RetryPractice
+  | PracticeAttempted ReviewAttempt
 
 data ReviewPuzzleAction
   = CancelReview
@@ -94,7 +101,7 @@ chessboardMakeMove fen orient move = board <|> setUp
   where
     setUp = liftAff $ setUpBoardAndMakeMove fen orient move
 
-chessboardReviewPuzzle :: Puzzle' -> Widget' ReviewAttempt
+chessboardReviewPuzzle :: Puzzle -> Widget' ReviewAttempt
 chessboardReviewPuzzle puzzle = 
   let
     orient :: Color
@@ -128,7 +135,7 @@ fileMenu = do
     , LoadFile <$ button "Load"
     ]
   case action of
-    NewFile -> pure { puzzles: [] }
+    NewFile -> pure { previous: Nothing, puzzles: [] }
     LoadFile -> do
       fileTextMaybe <- liftAff loadFile 
         <|> (Nothing <$ fileMenu)
@@ -151,28 +158,31 @@ label text = D.input
     where w = show $ round (50.0 + (6.65 * (toNumber $ S.length text)))
 
 mainMenu :: State -> Widget' State
-mainMenu state = do
-  puzzles' <- liftEffect $ flip puzzlesToReview state.puzzles <$> timeSec
+mainMenu s = do
+  puzzles' <- liftEffect $ flip puzzlesToReview s.puzzles <$> timeSec
   action <- mainMenuInputs (length puzzles')
   case action of
     NewPuzzle name fen -> do
-      case validateNewPuzzle state.puzzles name fen of
+      case validateNewPuzzle s.puzzles name fen of
         Left errMsg -> do
           liftEffect $ popup errMsg
-          mainMenu state
+          mainMenu s
         Right (Tuple name' fen') -> do
           puzzle <- newPuzzle name' fen'
-          let newPuzzles = sortWith _.name (state.puzzles <> U.fromMaybe puzzle)
-          mainMenu (state { puzzles = newPuzzles })
-    SaveState -> do
-      liftEffect $ saveFile "data.txt" (prettifyJSON $ serializeState state)
-      mainMenu state
+          let newPuzzles = sortWith _.name (s.puzzles <> U.fromMaybe puzzle)
+          mainMenu (s { puzzles = newPuzzles })
+    PracticePrevious -> do
+      fromMaybe (pure unit) (practicePuzzle <$> previousPuzzle s)
+      mainMenu s
     PrintState -> do
-      liftEffect $ log $ show state
-      mainMenu state
+      liftEffect $ log $ show s
+      mainMenu s
     ReviewPuzzles -> do
-      reviewedPuzzles <- reviewPuzzles state.puzzles
-      mainMenu state { puzzles = reviewedPuzzles }
+      reviewedPuzzles <- reviewPuzzles s.puzzles
+      mainMenu s { puzzles = reviewedPuzzles }
+    SaveState -> do
+      liftEffect $ saveFile "data.txt" (prettifyJSON $ serializeState s)
+      mainMenu s
 
 mainMenuInputs :: Int -> Widget' MainMenuAction
 mainMenuInputs numPuzzles' = do
@@ -185,6 +195,7 @@ mainMenuInputs numPuzzles' = do
         if numPuzzles' > 0 
         then button ("Review (" <> show numPuzzles' <> ")")
         else button' "Review" false
+    , PracticePrevious <$ button "Previous"
     , br'
     , PrintState <$ button "Print State"
     ] 
@@ -216,10 +227,30 @@ newPuzzle name fen =
   in
     inner fen []
 
+practicePuzzle :: Puzzle -> Widget' Unit
+practicePuzzle p = 
+  let
+    inner :: Maybe ReviewAttempt -> Widget' Unit
+    inner ra = do
+      action <- D.div'
+        [ CancelPractice <$ button "Back"
+        , label p.name
+        , RetryPractice <$ button "Retry"
+        , case ra of
+          Just ra' -> chessboardShow ra'.fen (turnFromFEN p.fen) (Just $ toHighlight ra')
+          Nothing -> PracticeAttempted <$> chessboardReviewPuzzle p
+        ]
+      case action of
+        CancelPractice -> pure unit
+        RetryPractice -> inner Nothing
+        PracticeAttempted ra -> inner $ Just ra
+  in 
+    inner Nothing
+
 reviewPuzzle :: Puzzle' -> Widget' ReviewResult
 reviewPuzzle puzzle = 
   let
-    inner :: Milliseconds ->  Maybe Boolean -> Maybe ReviewAttempt' -> Widget' ReviewResult
+    inner :: Milliseconds -> Maybe Boolean -> Maybe ReviewAttempt' -> Widget' ReviewResult
     inner start firstTry currentTry = do
       action <- D.div'
         [ CancelReview <$ button "Back"
@@ -227,14 +258,14 @@ reviewPuzzle puzzle =
         , RetryReview <$ button' "Retry" (isJust firstTry)
         , NextPuzzle <$ button' "Next" (isJust firstTry)
         , case currentTry of
-            Just ca -> chessboardShow ca.fen (turnFromFEN puzzle.fen) (Just $ toHighlight ca)
-            Nothing -> ReviewAttempted <$> chessboardReviewPuzzle puzzle
+            Just ra -> chessboardShow ra.fen (turnFromFEN puzzle.fen) (Just $ toHighlight' ra)
+            Nothing -> ReviewAttempted <$> chessboardReviewPuzzle (toPuzzle puzzle)
         ]
       case action of
         CancelReview ->
           case firstTry of
             Nothing -> 
-              pure { puzzle: fromPuzzle' puzzle, continue: false }
+              pure { puzzle: toPuzzle puzzle, continue: false }
             Just correct -> do
               now <- liftEffect timeSec
               pure { puzzle: updatePuzzle now correct puzzle, continue: false }

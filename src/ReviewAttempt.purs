@@ -5,6 +5,7 @@ module ReviewAttempt
   , fromReviewAttempt
   , isCorrect
   , toHighlight
+  , toHighlight'
   , toReviewAttempt
   )
   where
@@ -12,17 +13,12 @@ module ReviewAttempt
 import Prelude
 
 import Chess (FEN, Hex, Move, Highlight)
-import Constants (spacedRepetitionSchedule)
+import Constants (correctGreen, spacedRepetitionSchedule, tooSlowOrange, wrongMoveRed)
 import Data.Array (length)
 import Data.Int (toNumber)
 import Data.String.CodeUnits (slice)
 import State (Puzzle', allottedSeconds)
 import Utils (Milliseconds)
-
-data ReviewAttemptOutcome
-  = Correct
-  | TooSlow
-  | WrongMove
 
 type ReviewAttempt =
   { correct :: Boolean
@@ -35,6 +31,11 @@ type ReviewAttempt' =
   , fen :: FEN
   , move :: Move
   }
+
+data ReviewAttemptOutcome
+  = Correct
+  | TooSlow
+  | WrongMove
 
 fromReviewAttempt :: Milliseconds -> Milliseconds -> Puzzle' -> ReviewAttempt -> ReviewAttempt'
 fromReviewAttempt start end p ra =
@@ -54,14 +55,20 @@ isCorrect Correct = true
 isCorrect TooSlow = false
 isCorrect WrongMove = false
 
-toHighlight :: ReviewAttempt' -> Highlight
+toHighlight :: ReviewAttempt -> Highlight
 toHighlight ra = { square: square, hex: hex }
   where
     square = slice 2 4 ra.move
+    hex = if ra.correct then correctGreen else wrongMoveRed
+
+toHighlight' :: ReviewAttempt' -> Highlight
+toHighlight' ra = { square: square, hex: hex }
+  where
+    square = slice 2 4 ra.move
     hex = case ra.outcome of
-      Correct -> "#ACCE59"
-      TooSlow -> "#E6912C"
-      WrongMove -> "#F42A32"
+      Correct -> correctGreen
+      TooSlow -> tooSlowOrange
+      WrongMove -> wrongMoveRed
 
 toReviewAttempt :: ReviewAttempt' -> ReviewAttempt
 toReviewAttempt ra = 

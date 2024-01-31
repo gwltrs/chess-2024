@@ -19,7 +19,7 @@ import Data.String (length, trim)
 import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex.Flags (multiline)
 import Data.Tuple (Tuple(..), fst, snd)
-import State (Puzzle, Puzzle', fromPuzzle', reviewAfter, toPuzzle')
+import State (Puzzle, Puzzle', reviewAfter, toPuzzle, toPuzzle')
 import Utils (forceRight)
 
 -- Auto-incrementing the name removes the hassle of duplicate names

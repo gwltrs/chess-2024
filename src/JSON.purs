@@ -32,8 +32,13 @@ serializeSR (Just sr) =
 
 serializeState :: State -> String
 serializeState s = 
-    let puzzlesStr = serializeArray $ serializePuzzle <$> s.puzzles
-    in "{\"puzzles\":" <> puzzlesStr <> "}"
+    let 
+        puzzlesStr = serializeArray $ serializePuzzle <$> s.puzzles
+        previousStr = case s.previous of
+            Just p -> wrapString p
+            Nothing -> "null"
+    in 
+        "{\"previous\":" <> previousStr <> ",\"puzzles\":" <> puzzlesStr <> "}"
 
 wrapString :: String -> String
 wrapString s = "\"" <> s <> "\""

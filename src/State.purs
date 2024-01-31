@@ -4,8 +4,9 @@ module State
   , SpacedRepetition
   , State
   , allottedSeconds
-  , fromPuzzle'
+  , previousPuzzle
   , reviewAfter
+  , toPuzzle
   , toPuzzle'
   , updatePuzzle
   , updateSR
@@ -16,7 +17,7 @@ import Prelude
 
 import Chess (FEN, Move)
 import Constants (secondsPerDay, spacedRepetitionSchedule)
-import Data.Array (length)
+import Data.Array (find, length)
 import Data.Int (pow, round, toNumber)
 import Data.Maybe (Maybe(..))
 import Utils (Milliseconds, Seconds, (!!!))
@@ -41,16 +42,22 @@ type SpacedRepetition =
   }
 
 type State =
-  { puzzles :: Array Puzzle
+  { previous :: Maybe String
+  , puzzles :: Array Puzzle
   }
 
 allottedSeconds :: Puzzle' -> Seconds
 allottedSeconds p = 3 + (2 * numMoves) + (1 * p.sr.box)
   where 
     numMoves = ((length p.line - 1) / 2) + 1
+
+previousPuzzle :: State -> Maybe Puzzle
+previousPuzzle s = do
+  p <- s.previous
+  find (\e -> e.name == p) s.puzzles
   
-fromPuzzle' :: Puzzle' -> Puzzle
-fromPuzzle' p' = { name: p'.name, fen: p'.fen, line: p'.line, sr: Just p'.sr }
+toPuzzle :: Puzzle' -> Puzzle
+toPuzzle p = { name: p.name, fen: p.fen, line: p.line, sr: Just p.sr }
 
 toPuzzle' :: Puzzle -> Maybe Puzzle'
 toPuzzle' p = p.sr 
