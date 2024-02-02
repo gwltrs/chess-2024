@@ -37,7 +37,7 @@ import File (loadFile, saveFile)
 import JSON (parseState, serializeState)
 import React.DOM.Dynamic (object)
 import React.Ref as R
-import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, toHighlight, toHighlight')
+import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, isCorrect, toHighlight, toHighlight')
 import State (Puzzle, Puzzle', State, previousPuzzle, toPuzzle, updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, prettifyJSON, timeMS, timeSec, (!!!))
@@ -246,7 +246,7 @@ practicePuzzle p =
       case action of
         CancelPractice -> pure unit
         RetryPractice -> inner Nothing
-        PracticeAttempted ra -> inner $ Just ra
+        PracticeAttempted ra' -> inner $ Just ra'
   in 
     inner Nothing
 
@@ -280,7 +280,8 @@ reviewPuzzle puzzle =
           inner newStart firstTry Nothing
         ReviewAttempted attempt -> do
           end <- liftEffect timeMS
-          inner start (Just $ fromMaybe attempt.correct firstTry) (Just $ fromReviewAttempt start end puzzle attempt)
+          let ra = fromReviewAttempt start end puzzle attempt
+          inner start (Just $ fromMaybe (isCorrect ra.outcome) firstTry) (Just ra)
   in do
     newStart <- liftEffect timeMS
     inner newStart Nothing Nothing
