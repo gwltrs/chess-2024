@@ -56,7 +56,7 @@ puzzlesToReview now puzzles = puzzles
     # mapMaybe toPuzzle'
     <#> (\p -> Tuple (reviewAfter p.sr) p)
     # filter (\t -> now > fst t)
-    # sortWith (negate <<< fst)
+    # sortWith fst
     <#> snd
 
 validateNewPuzzle :: Array Puzzle -> String -> FEN -> Either String (Tuple String FEN)
