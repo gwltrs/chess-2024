@@ -38,7 +38,7 @@ import JSON (parseState, serializeState)
 import React.DOM.Dynamic (object)
 import React.Ref as R
 import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, isCorrect, toHighlight, toHighlight')
-import State (Puzzle, Puzzle', State, previousPuzzle, toPuzzle, updatePuzzle)
+import State (Puzzle, Puzzle', State, allottedSeconds, previousPuzzle, toPuzzle, updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
 import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, prettifyJSON, timeMS, timeSec, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
@@ -280,6 +280,9 @@ reviewPuzzle puzzle =
           inner newStart firstTry Nothing
         ReviewAttempted attempt -> do
           end <- liftEffect timeMS
+          liftEffect $ log ("box: " <> show puzzle.sr.box)
+          liftEffect $ log ("allotted: " <> (show $ allottedSeconds puzzle))
+          liftEffect $ log ("actual: " <> show ((end - start) / 1000.0))
           let ra = fromReviewAttempt start end puzzle attempt
           inner start (Just $ fromMaybe (isCorrect ra.outcome) firstTry) (Just ra)
   in do
