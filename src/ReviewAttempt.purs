@@ -12,9 +12,8 @@ module ReviewAttempt
 
 import Prelude
 
-import Chess (FEN, Hex, Move, Highlight)
-import Constants (correctGreen, spacedRepetitionSchedule, tooSlowOrange, wrongMoveRed)
-import Data.Array (length)
+import Chess (FEN, Move, Highlight)
+import Constants (correctGreen, tooSlowOrange, wrongMoveRed)
 import Data.Int (toNumber)
 import Data.String.CodeUnits (slice)
 import State (Puzzle', allottedSeconds)

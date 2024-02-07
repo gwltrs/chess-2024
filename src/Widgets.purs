@@ -13,34 +13,30 @@ module Widgets
 
 import Prelude
 
-import Chess (Color, FEN, Highlight, Move, Move', Square, destroyBoard, fenIsValid, sanitizeFEN, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
+import Chess (Color, FEN, Highlight, Move, Move', destroyBoard, setUpBoardAndDoNothing, setUpBoardAndMakeMove, setUpBoardAndWaitForMove, turnFromFEN)
 import Concur.Core (Widget)
 import Concur.React (HTML)
 import Concur.React.DOM (br')
 import Concur.React.DOM as D
 import Concur.React.Props as P
 import Control.Alt ((<|>))
-import Data.Array (find, findIndex, head, length, null, sortWith, unsafeIndex, updateAt, zip)
+import Data.Array (findIndex, head, length, sortWith, updateAt, zip)
 import Data.Either (Either(..))
 import Data.Int (even, odd, round, toNumber)
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.String as S
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..), uncurry)
-import Data.Unfoldable as U
-import Effect (Effect)
-import Effect.Aff (attempt)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import File (loadFile, saveFile)
 import JSON (parseState, serializeState)
-import React.DOM.Dynamic (object)
 import React.Ref as R
 import ReviewAttempt (ReviewAttempt, ReviewAttempt', fromReviewAttempt, isCorrect, toHighlight, toHighlight')
 import State (Puzzle, Puzzle', State, allottedSeconds, previousPuzzle, toPuzzle, updatePuzzle)
 import Unsafe.Coerce (unsafeCoerce)
-import Utils (Milliseconds, Seconds, forceArray, forceJust, popup, prettifyJSON, timeMS, timeSec, (!!!))
+import Utils (Milliseconds, forceJust, popup, prettifyJSON, timeMS, timeSec, (!!!))
 import WidgetLogic (puzzlesToReview, validateNewPuzzle)
 
 data FileMenuAction

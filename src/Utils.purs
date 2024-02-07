@@ -15,11 +15,10 @@ module Utils
 import Prelude
 
 import Data.Array (unsafeIndex)
-import Data.Either (Either(..), hush)
-import Data.Int (round)
+import Data.Either (Either, hush)
 import Data.Maybe (Maybe, fromJust)
 import Effect (Effect)
-import Partial.Unsafe (unsafeCrashWith, unsafePartial)
+import Partial.Unsafe (unsafePartial)
 
 type Milliseconds = Number
 type Seconds = Int

@@ -20,7 +20,7 @@ import Constants (secondsPerDay, spacedRepetitionSchedule)
 import Data.Array (find, length)
 import Data.Int (pow, round, toNumber)
 import Data.Maybe (Maybe(..))
-import Utils (Milliseconds, Seconds, (!!!))
+import Utils (Seconds, (!!!))
 
 type Puzzle =
   { name :: String

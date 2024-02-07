@@ -8,18 +8,17 @@ module WidgetLogic
 import Prelude
 
 import Chess (FEN, fenIsValid, sanitizeFEN)
-import Constants (secondsPerDay)
 import Data.Array (elem, filter, findIndex, mapMaybe, sortWith)
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either(..))
 import Data.Foldable (foldr)
-import Data.Int (fromString, pow)
+import Data.Int (fromString)
 import Data.Maybe (Maybe(..), isNothing)
 import Data.String (length, trim)
 import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex.Flags (multiline)
 import Data.Tuple (Tuple(..), fst, snd)
-import State (Puzzle, Puzzle', reviewAfter, toPuzzle, toPuzzle')
+import State (Puzzle, Puzzle', reviewAfter, toPuzzle')
 import Utils (forceRight)
 
 -- Auto-incrementing the name removes the hassle of duplicate names
