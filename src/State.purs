@@ -47,7 +47,7 @@ type State =
   }
 
 allottedSeconds :: Puzzle' -> Seconds
-allottedSeconds p = 1 + (2 * numMoves) + (pow 2 p.sr.box)
+allottedSeconds p = 2 + (2 * numMoves) + (pow 2 p.sr.box)
   where 
     numMoves = ((length p.line - 1) / 2) + 1
 
