@@ -1,9 +1,8 @@
 "use strict";
 
 var previousBoard = null;
+
 let lastUnderPromotionHotKey = null;
-let whiteSquareGray = '#a9a9a9';
-let blackSquareGray = '#696969';
 
 try {
     document.addEventListener('keydown', e => {
@@ -73,6 +72,7 @@ export function setUpBoardAndDoNothing_(fen) {
 export function setUpBoardAndMakeMove_(fen) {
     return function(orientation) {
         return function(move) {
+            console.log('setUpBoardAndMakeMove_', fen, orientation, move);
             return function() {
                 return delay(1).then(() => {
                     return new Promise((res, rej) => {
@@ -98,7 +98,6 @@ export function setUpBoardAndMakeMove_(fen) {
 export function setUpBoardAndWaitForMove_(fen) {
     return function(orientation) {
         return function() {
-            let graySquare = null;
             return delay(1).then(() => {
                 return new Promise((res, rej) => {
                     destroyBoard();
@@ -115,16 +114,7 @@ export function setUpBoardAndWaitForMove_(fen) {
                             }
                         },
                         onDrop: (source, target, piece, newPos, oldPos, orientation_) => {
-                            if (source === target) { 
-                                if (graySquare === null) {
-                                    graySquare = target;
-                                    addGraySquare(target);
-                                } else {
-                                    graySquare = null;
-                                    removeGreySquares();
-                                }
-                                return 'snapback'; 
-                            }
+                            if (source === target) { return 'snapback'; }
                             const game = mkGame(fen);
                             const pl = promotionLetter();
                             const obj = game.move({ 
@@ -150,15 +140,6 @@ export function turnFromFEN(fen) {
     const bw = fen.match(regex)[1];
     if (bw === 'b') { return 'black'; }
     if (bw === 'w') { return 'white'; }
-}
-
-function addGraySquare(square) {
-    let $square = $('#board .square-' + square);
-    let background = whiteSquareGray;
-    if ($square.hasClass('black-3c85d')) {
-      background = blackSquareGray;
-    }
-    $square.css('background', background);
 }
 
 function chessJSFEN(fen) {
@@ -202,7 +183,7 @@ function enPassantIsPossible(rawFEN) {
     const noEnPassantGame = mkGame(fenWithoutEnPassant);
     return rawGame.moves().length > noEnPassantGame.moves().length;
 }
-
+ 
 function mkGame(fen) {
     return new Chess(chessJSFEN(fen));
 }
@@ -219,10 +200,6 @@ function promotionLetter() {
             return 'q';
         }
     }
-}
-
-function removeGreySquares() {
-    $('#board .square-55d63').css('background', '');
 }
 
 function removeEnPassantDataFromFEN(fen) {
