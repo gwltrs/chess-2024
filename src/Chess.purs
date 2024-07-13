@@ -10,9 +10,6 @@ module Chess
   , fenAfterMove
   , fenIsValid
   , sanitizeFEN
-  , setUpBoardAndDoNothing
-  , setUpBoardAndMakeMove
-  , setUpBoardAndWaitForMove
   , turnFromFEN
   )
   where
