@@ -133,8 +133,7 @@ fileMenu = do
   case action of
     NewFile -> pure { previous: Nothing, puzzles: [] }
     LoadFile -> do
-      fileTextMaybe <- liftAff loadFile 
-        <|> (Nothing <$ fileMenu)
+      fileTextMaybe <- liftAff loadFile <|> (Nothing <$ fileMenu)
       case fileTextMaybe of
         Nothing -> fileMenu
         Just fileText ->
